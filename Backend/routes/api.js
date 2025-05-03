@@ -1,0 +1,15 @@
+import express from 'express';
+import authRoutes from './authRoutes.js';
+import centerRoutes from './centerRoutes.js';
+import tutorRoutes from './tutorRoutes.js';
+import studentRoutes from './studentRoutes.js';
+
+const router = express.Router();
+
+// Mount routes
+router.use('/auth', authRoutes);
+router.use('/centers', centerRoutes);
+router.use('/tutors', tutorRoutes);
+router.use('/students', studentRoutes);
+
+export default router;
