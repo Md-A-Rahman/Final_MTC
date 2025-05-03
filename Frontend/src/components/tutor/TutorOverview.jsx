@@ -86,34 +86,23 @@ const TutorOverview = () => {
     setAttendanceMarked(false)
   }
 
-  const stats = [
-    { label: 'Total Students', value: totalStudents, icon: <FiUsers /> },
-    { label: 'Assigned Students', value: assignedStudents, icon: <FiUsers /> },
-    { label: "Today's Time", value: currentTime.toLocaleTimeString(), icon: <FiClock /> }
-  ]
-
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-white rounded-xl shadow-lg p-6"
-          >
-            <div className="flex items-center">
-              <div className="bg-accent-100 p-3 rounded-lg text-accent-600 mr-4">
-                {stat.icon}
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
+          <div>
+            <div className="text-2xl font-bold text-accent-600">{totalStudents}</div>
+            <div className="text-gray-600">Total Students</div>
+          </div>
+          <FiUsers className="text-4xl text-accent-400" />
+        </div>
+        <div className="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
+          <div>
+            <div className="text-2xl font-bold text-primary-600">{assignedStudents}</div>
+            <div className="text-gray-600">My Assigned Students</div>
+          </div>
+          <FiCheck className="text-4xl text-primary-400" />
+        </div>
       </div>
 
       <motion.div
