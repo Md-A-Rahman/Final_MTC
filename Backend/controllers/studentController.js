@@ -50,7 +50,7 @@ export const getStudent = async (req, res) => {
 
 // @desc    Create student
 // @route   POST /api/students
-// @access  Private/Admin
+// @access  Private/Admin & Private/Tutor
 export const createStudent = async (req, res) => {
   try {
     const {
@@ -65,9 +65,13 @@ export const createStudent = async (req, res) => {
       medium,
       aadharNumber,
       assignedCenter,
-      assignedTutor,
+      assignedTutor: assignedTutorFromBody,
       remarks
     } = req.body;
+
+    console.log('Received student data:', req.body); // Debug log
+
+    let assignedTutorToUse = assignedTutorFromBody;
 
     // Check if center exists
     const center = await Center.findById(assignedCenter);
@@ -75,40 +79,70 @@ export const createStudent = async (req, res) => {
       return res.status(404).json({ message: 'Center not found' });
     }
 
-    // Check if tutor exists and belongs to the same center
-    if (assignedTutor) {
-      const tutor = await Tutor.findById(assignedTutor);
+    // If user is a tutor, they can only assign students to themselves
+    if (req.role === 'tutor') {
+      // Verify that the tutor belongs to the selected center
+      const tutor = await Tutor.findById(req.user._id);
       if (!tutor) {
         return res.status(404).json({ message: 'Tutor not found' });
       }
-      if (tutor.assignedCenter.toString() !== assignedCenter) {
-        return res.status(400).json({ message: 'Tutor does not belong to the selected center' });
+      if (!tutor.assignedCenter || tutor.assignedCenter.toString() !== assignedCenter) {
+        return res.status(403).json({ message: 'You can only add students to your assigned center' });
+      }
+      // Force assign the student to the current tutor
+      assignedTutorToUse = req.user._id;
+    } else {
+      // For admin users, verify the assigned tutor if provided
+      if (assignedTutorFromBody) {
+        const tutor = await Tutor.findById(assignedTutorFromBody);
+        if (!tutor) {
+          return res.status(404).json({ message: 'Tutor not found' });
+        }
+        if (tutor.assignedCenter.toString() !== assignedCenter) {
+          return res.status(400).json({ message: 'Tutor does not belong to the selected center' });
+        }
       }
     }
 
-    const student = await Student.create({
+    // Create student with proper data structure
+    const studentData = {
       name,
       fatherName,
       contact,
       isOrphan,
-      guardianInfo,
+      guardianInfo: isOrphan ? guardianInfo : undefined,
       isNonSchoolGoing,
-      schoolInfo,
+      schoolInfo: !isNonSchoolGoing ? schoolInfo : undefined,
       gender,
       medium,
       aadharNumber,
       assignedCenter,
-      assignedTutor,
-      remarks
-    });
+      assignedTutor: assignedTutorToUse,
+      remarks,
+      attendance: [] // Initialize empty attendance array
+    };
+
+    console.log('Creating student with data:', studentData); // Debug log
+
+    const student = await Student.create(studentData);
 
     // Add student to center
     center.students.push(student._id);
     await center.save();
 
-    res.status(201).json(student);
+    // Populate the response with center and tutor details
+    const populatedStudent = await Student.findById(student._id)
+      .populate('assignedCenter', 'name location')
+      .populate('assignedTutor', 'name');
+
+    res.status(201).json(populatedStudent);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error creating student:', error); // Debug log
+    res.status(500).json({ 
+      message: 'Error creating student',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -127,15 +161,6 @@ export const updateStudent = async (req, res) => {
     if (req.role === 'tutor') {
       if (student.assignedTutor.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Not authorized to update this student' });
-      }
-      
-      // Only allow attendance updates
-      const allowedUpdates = ['attendance'];
-      const updates = Object.keys(req.body);
-      const isValidOperation = updates.every(update => allowedUpdates.includes(update));
-      
-      if (!isValidOperation) {
-        return res.status(400).json({ message: 'Invalid updates' });
       }
     }
 

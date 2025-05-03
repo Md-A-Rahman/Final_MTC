@@ -5,7 +5,9 @@ import { useNavigate } from 'react-router-dom'
 const Sidebar = ({ activeTab, setActiveTab, tabs }) => {
   const navigate = useNavigate()
   const HandleLogout = () => {
-    navigate('/')
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    navigate('/admin');
   }
   return (
     <aside className="w-64 bg-white shadow-xl fixed h-screen bg-gradient-to-b from-white to-blue-50">

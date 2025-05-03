@@ -1,20 +1,20 @@
 import { motion } from 'framer-motion'
 import { FiLogOut, FiUser } from 'react-icons/fi'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from "react-router-dom";
 
 const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
   const [showProfile, setShowProfile] = useState(false);
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [tutorProfile, setTutorProfile] = useState(null);
 
-  const tutorProfile = {
-    name: 'Ahmed Khan',
-    email: 'ahmed.khan@example.com',
-    phone: '9876543210',
-    center: 'Malakpet Center',
-    joinDate: '2023-01-15'
-  }
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setTutorProfile(JSON.parse(userData));
+    }
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -22,6 +22,10 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
     setIsLoggedIn(false);
     navigate("/tutor");
   };
+
+  if (!tutorProfile) {
+    return null; // or a loading spinner
+  }
 
   return (
     <aside className="w-64 bg-white shadow-xl fixed h-screen bg-gradient-to-b from-white to-blue-50">
@@ -35,7 +39,7 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{tutorProfile.name}</h2>
-            <p className="text-sm text-gray-600">{tutorProfile.center}</p>
+            <p className="text-sm text-gray-600">{tutorProfile.centerName || tutorProfile.assignedCenter}</p>
           </div>
         </div>
       </div>
@@ -74,11 +78,23 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
               <span className="text-gray-600">Phone:</span> {tutorProfile.phone}
             </p>
             <p className="text-sm">
-              <span className="text-gray-600">Center:</span> {tutorProfile.center}
+              <span className="text-gray-600">Center:</span> {tutorProfile.centerName || tutorProfile.assignedCenter}
             </p>
             <p className="text-sm">
-              <span className="text-gray-600">Join Date:</span> {tutorProfile.joinDate}
+              <span className="text-gray-600">Join Date:</span> {new Date(tutorProfile.createdAt).toLocaleDateString()}
             </p>
+            {tutorProfile.subjects && (
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Subjects:</p>
+                <div className="flex flex-wrap gap-1">
+                  {tutorProfile.subjects.map((subject, index) => (
+                    <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                      {subject}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       )}

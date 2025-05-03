@@ -139,6 +139,7 @@ export const updateTutor = async (req, res) => {
 
     // If updating password, hash it
     if (req.body.password) {
+      // Always hash the password when updating
       const salt = await bcrypt.genSalt(10);
       req.body.password = await bcrypt.hash(req.body.password, salt);
     }
@@ -161,16 +162,40 @@ export const updateTutor = async (req, res) => {
       await newCenter.save();
     }
 
+    // Prepare update data
+    const updateData = {
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
+      assignedCenter: req.body.assignedCenter,
+      subjects: req.body.subjects,
+      sessionType: req.body.sessionType,
+      sessionTiming: req.body.sessionTiming,
+      assignmentInformation: req.body.assignmentInformation || tutor.assignmentInformation
+    };
+
+    // Always include password in update if it was provided
+    if (req.body.password) {
+      updateData.password = req.body.password;
+    }
+
     const updatedTutor = await Tutor.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     )
       .select('-password')
       .populate('assignedCenter', 'name location');
 
-    res.json(updatedTutor);
+    // Add centerName to the response
+    const tutorResponse = updatedTutor.toObject();
+    tutorResponse.centerName = tutorResponse.assignedCenter?.name || "Unknown Center";
+
+    res.json(tutorResponse);
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'A tutor with this phone number already exists' });
+    }
     res.status(500).json({ message: error.message });
   }
 };

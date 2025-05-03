@@ -114,7 +114,7 @@ export const tutorLogin = async (req, res) => {
       name: tutor.name,
       phone: tutor.phone,
       role: tutor.role,
-      assignedCenter: tutor.assignedCenter,
+      assignedCenter: tutor.assignedCenter ? tutor.assignedCenter.toString() : null,
       centerName: center.name,
       token: generateToken(tutor._id, 'tutor')
     });

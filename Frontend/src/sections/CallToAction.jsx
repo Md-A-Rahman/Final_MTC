@@ -16,6 +16,7 @@ const CallToAction = () => {
     memos: null,
     resume: null
   })
+  const [submitStatus, setSubmitStatus] = useState('')
   const centers = [
     { id: 1, name: 'Malakpet Center' },
     { id: 2, name: 'Mehdipatnam Center' },
@@ -28,18 +29,60 @@ const CallToAction = () => {
     if (type === 'file') {
       setFormData({ ...formData, [name]: e.target.files[0] })
     } else if (type === 'checkbox') {
-      const updatedSubjects = formData.assignedSubjects.includes(value)
+      const updatedSubjects = formData.assignedSubjects?.includes(value)
         ? formData.assignedSubjects.filter(subject => subject !== value)
-        : [...formData.assignedSubjects, value]
+        : [...(formData.assignedSubjects || []), value]
       setFormData({ ...formData, assignedSubjects: updatedSubjects })
     } else {
       setFormData({ ...formData, [name]: value })
     }
   }
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // You can add your submit logic here
-    setShowTutorModal(false)
+    setSubmitStatus('')
+    
+    // Custom validation for file inputs
+    if (!formData.certificates || !formData.memos || !formData.resume) {
+      setSubmitStatus('Please upload all required documents.')
+      return
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/tutor-applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          qualifications: formData.qualifications,
+          certificates: formData.certificates?.name || '',
+          memos: formData.memos?.name || '',
+          resume: formData.resume?.name || ''
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit application')
+      }
+
+      setSubmitStatus('Application submitted successfully!')
+      setFormData({
+        fullName: '',
+        email: '',
+        phone: '',
+        qualifications: '',
+        certificates: null,
+        memos: null,
+        resume: null
+      })
+      setShowTutorModal(false)
+    } catch (error) {
+      setSubmitStatus('Error submitting application. Please try again.')
+      console.error('Error:', error)
+    }
   }
 
   const fadeIn = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }
@@ -173,7 +216,7 @@ const CallToAction = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Certificates</label>
                       <div className="relative">
-                        <input type="file" name="certificates" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="certificates" required />
+                        <input type="file" name="certificates" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="certificates" />
                         <label htmlFor="certificates" className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                           <FiUpload className="mr-2" />
                           <span className="text-sm">Upload Certificates</span>
@@ -184,7 +227,7 @@ const CallToAction = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Memos</label>
                       <div className="relative">
-                        <input type="file" name="memos" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="memos" required />
+                        <input type="file" name="memos" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="memos" />
                         <label htmlFor="memos" className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                           <FiUpload className="mr-2" />
                           <span className="text-sm">Upload Memos</span>
@@ -195,7 +238,7 @@ const CallToAction = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Resume</label>
                       <div className="relative">
-                        <input type="file" name="resume" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="resume" required />
+                        <input type="file" name="resume" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="resume" />
                         <label htmlFor="resume" className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                           <FiUpload className="mr-2" />
                           <span className="text-sm">Upload Resume</span>
@@ -209,6 +252,7 @@ const CallToAction = () => {
                   <button type="button" onClick={() => setShowTutorModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg">Submit Application</button>
                 </div>
+                {submitStatus && <div className="text-center text-green-600 font-medium mt-2">{submitStatus}</div>}
               </form>
             </motion.div>
           </div>

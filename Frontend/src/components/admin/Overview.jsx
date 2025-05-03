@@ -1,69 +1,89 @@
 import { motion } from 'framer-motion'
-import { FiUsers, FiMapPin, FiClock, FiTrendingUp } from 'react-icons/fi'
+import { FiUsers, FiMapPin, FiClock, FiUser } from 'react-icons/fi'
+import useGet from '../CustomHooks/useGet'
+import { useMemo } from 'react'
 
 const Overview = () => {
+  // Fetch tutors, centers, and tutor applications
+  const { response: tutors, loading: tutorsLoading } = useGet('/tutors')
+  const { response: centers, loading: centersLoading } = useGet('/centers')
+  const { response: tutorApps, loading: appsLoading } = useGet('/tutor-applications')
+
+  // Placeholder attendance percentage logic
+  const attendancePercentage = useMemo(() => {
+    return tutors && tutors.length > 0 ? 'N/A' : '0%'
+  }, [tutors])
+
   const stats = [
-    { label: 'Total Tutors', value: '45', icon: <FiUsers />, color: 'from-blue-500 to-blue-600' },
-    { label: 'Active Centers', value: '12', icon: <FiMapPin />, color: 'from-green-500 to-green-600' },
-    { label: 'Today\'s Attendance', value: '92%', icon: <FiClock />, color: 'from-purple-500 to-purple-600' },
-    // { label: 'Student Growth', value: '+15%', icon: <FiTrendingUp />, color: 'from-orange-500 to-orange-600' }
+    { label: 'Total Tutors', value: tutorsLoading ? '...' : tutors?.length || 0, icon: FiUsers },
+    { label: 'Total Centers', value: centersLoading ? '...' : centers?.length || 0, icon: FiMapPin },
+    { label: 'Attendance', value: attendancePercentage, icon: FiClock }
   ]
 
+  // Format date for recent activity
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
-        Dashboard Overview
-      </h1>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map((stat, index) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
+            className="bg-white rounded-lg shadow-md p-6"
           >
-            <div className="flex items-center">
-              <div className={`bg-gradient-to-r ${stat.color} p-3 rounded-lg text-white mr-4`}>
-                {stat.icon}
-              </div>
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">{stat.label}</p>
-                <p className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                  {stat.value}
-                </p>
+                <p className="text-gray-600 text-sm">{stat.label}</p>
+                <p className="text-2xl font-bold mt-1">{stat.value}</p>
               </div>
+              <stat.icon className="w-8 h-8 text-blue-500" />
             </div>
           </motion.div>
         ))}
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-lg p-6 backdrop-blur-sm bg-opacity-80">
-        <h2 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-          Recent Activity
-        </h2>
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
         <div className="space-y-4">
-          {[
-            { time: '2 hours ago', text: 'MA Rahman filled attendance' },
-            { time: '3 hours ago', text: 'Safi filled attendance' },
-            // { time: '5 hours ago', text: 'Zain filled attendance' }
-          ].map((activity, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="flex items-center py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50 rounded-lg px-4 transition-colors duration-300"
-            >
-              <div className="w-2 h-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mr-4"></div>
-              <div>
-                <p className="text-gray-800 font-medium">{activity.text}</p>
-                <p className="text-sm text-gray-500">{activity.time}</p>
-              </div>
-            </motion.div>
-          ))}
+          {appsLoading ? (
+            <p>Loading recent activity...</p>
+          ) : tutorApps && tutorApps.length > 0 ? (
+            tutorApps.slice(0, 5).map((app, index) => (
+              <motion.div
+                key={app._id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center space-x-3">
+                  <FiUser className="w-5 h-5 text-blue-500" />
+                  <div>
+                    <p className="font-medium">{app.fullName}</p>
+                    <p className="text-sm text-gray-600">Applied as Tutor</p>
+                  </div>
+                </div>
+                <span className="text-sm text-gray-500">{formatDate(app.createdAt)}</span>
+              </motion.div>
+            ))
+          ) : (
+            <p className="text-gray-500">No recent activity</p>
+          )}
         </div>
       </div>
     </div>

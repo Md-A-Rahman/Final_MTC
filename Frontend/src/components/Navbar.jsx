@@ -42,7 +42,7 @@ const Navbar = () => {
           {/* Logo */}
           <RouterLink to="/" className="relative z-10" onClick={closeMenu}>
             <div className="flex items-center">
-              <Logo />
+              <Logo useLink={false} />
             </div>
           </RouterLink>
 

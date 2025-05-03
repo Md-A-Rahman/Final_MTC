@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import { FiUsers, FiClock, FiCheck, FiX } from 'react-icons/fi'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import useGet from '../CustomHooks/useGet'
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -33,6 +34,14 @@ const TutorOverview = () => {
   const [currentLocation, setCurrentLocation] = useState(null)
   const [locationMatch, setLocationMatch] = useState(null)
   const [attendanceMarked, setAttendanceMarked] = useState(false)
+
+  // Fetch students
+  const { response: students, loading } = useGet('/students')
+  const tutorData = JSON.parse(localStorage.getItem('user') || '{}')
+
+  // Calculate counts
+  const totalStudents = students ? students.length : 0
+  const assignedStudents = students ? students.filter(s => (s.assignedTutor && (s.assignedTutor._id || s.assignedTutor) === tutorData._id)).length : 0
 
   // Sample center location (this would come from backend)
   const centerLocation = { lat: 17.3850, lng: 78.4867 }
@@ -78,9 +87,9 @@ const TutorOverview = () => {
   }
 
   const stats = [
-    { label: 'Total Students', value: '45', icon: <FiUsers /> },
-    { label: 'Assigned Students', value: '15', icon: <FiUsers /> },
-    { label: 'Today\'s Time', value: currentTime.toLocaleTimeString(), icon: <FiClock /> }
+    { label: 'Total Students', value: totalStudents, icon: <FiUsers /> },
+    { label: 'Assigned Students', value: assignedStudents, icon: <FiUsers /> },
+    { label: "Today's Time", value: currentTime.toLocaleTimeString(), icon: <FiClock /> }
   ]
 
   return (

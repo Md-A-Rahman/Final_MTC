@@ -43,12 +43,12 @@ const dateRangeValidation = [
 
 router.route('/')
   .get(protect, getStudents)
-  .post(protect, adminOnly, studentValidation, validateRequest, createStudent);
+  .post(protect, studentValidation, validateRequest, createStudent);
 
 router.route('/:id')
   .get(protect, getStudent)
   .put(protect, studentValidation, validateRequest, updateStudent)
-  .delete(protect, adminOnly, deleteStudent);
+  .delete(protect, deleteStudent);
 
 router.route('/:id/attendance')
   .post(protect, attendanceValidation, validateRequest, markAttendance);

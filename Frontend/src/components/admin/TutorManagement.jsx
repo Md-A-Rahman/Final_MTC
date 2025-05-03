@@ -7,10 +7,11 @@ import Papa from 'papaparse'
 import { toast } from 'react-hot-toast'
 
 const TutorManagement = () => {
-  const [showForm, setShowForm] = useState(false)
-  const [showProfile, setShowProfile] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [editingTutor, setEditingTutor] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [showProfile, setShowProfile] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCenter, setSelectedCenter] = useState('')
   const [error, setError] = useState(null);
   const [showErrorAlert, setShowErrorAlert] = useState(false);
@@ -18,7 +19,6 @@ const TutorManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmClose, setShowConfirmClose] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTutor, setSelectedTutor] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [tutorToDelete, setTutorToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -50,37 +50,33 @@ const TutorManagement = () => {
     'Hindi'
   ]
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    if (name === 'subjects') {
-      setFormData(prev => {
-        const subjects = prev.subjects || [];
-        if (checked) {
-          return { ...prev, subjects: [...subjects, value] };
-        } else {
-          return { ...prev, subjects: subjects.filter(subject => subject !== value) };
-        }
-      });
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
-  }
+  const handleEdit = (tutor) => {
+    setEditingTutor(tutor);
+    setFormData({
+      name: tutor.name,
+      email: tutor.email,
+      phone: tutor.phone,
+      password: 'tutor@123', // Don't show existing password
+      assignmentInfo: tutor.assignmentInformation || '',
+      assignedCenter: tutor.assignedCenter?._id || tutor.assignedCenter,
+      subjects: tutor.subjects || [],
+      sessionType: tutor.sessionType,
+      sessionTiming: tutor.sessionTiming
+    });
+    setShowForm(true);
+  };
 
   const handleFormClose = () => {
     if (Object.values(formData).some(value => value !== '')) {
       setShowConfirmClose(true);
     } else {
       setShowForm(false);
+      setEditingTutor(null);
+      resetForm();
     }
   };
 
-  const confirmClose = () => {
-    setShowForm(false);
-    setShowConfirmClose(false);
+  const resetForm = () => {
     setFormData({
       name: '',
       email: '',
@@ -94,6 +90,13 @@ const TutorManagement = () => {
     });
   };
 
+  const confirmClose = () => {
+    setShowForm(false);
+    setShowConfirmClose(false);
+    setEditingTutor(null);
+    resetForm();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -102,7 +105,7 @@ const TutorManagement = () => {
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.email || !formData.phone || !formData.password || 
+      if (!formData.name || !formData.email || !formData.phone || 
           !formData.assignedCenter || !formData.subjects?.length || !formData.sessionType || !formData.sessionTiming) {
         setError('Please fill in all required fields');
         setShowErrorAlert(true);
@@ -124,7 +127,6 @@ const TutorManagement = () => {
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
-        password: formData.password,
         assignedCenter: selectedCenter._id,
         centerName: selectedCenter.name,
         subjects: formData.subjects,
@@ -133,55 +135,75 @@ const TutorManagement = () => {
         assignmentInformation: formData.assignmentInfo || ''
       };
 
+      // Always include password for new tutors, or if it's been changed for existing tutors
+      if (!editingTutor) {
+        formattedData.password = formData.password;
+      } else if (formData.password && formData.password !== 'tutor@123') {
+        formattedData.password = formData.password;
+      }
+
       const token = localStorage.getItem('token');
       if (!token) {
         setError('Please login to continue');
         setShowErrorAlert(true);
         setIsSubmitting(false);
+        // Redirect to login page after a short delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/tutors', {
-        method: 'POST',
+      const url = editingTutor 
+        ? `http://localhost:5000/api/tutors/${editingTutor._id}`
+        : 'http://localhost:5000/api/tutors';
+
+      const response = await fetch(url, {
+        method: editingTutor ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(formattedData)
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        if (response.status === 400) {
-          if (data.message?.includes('already exists')) {
-            setError('A tutor with this phone number already exists. Please use a different phone number.');
-            setShowErrorAlert(true);
-            setShowForm(false);
-            setIsSubmitting(false);
-            return;
-          }
-          if (data.errors && data.errors.length > 0) {
-            setError(data.errors.map(error => error.msg).join(', '));
-            setShowErrorAlert(true);
-            setShowForm(false);
-            setIsSubmitting(false);
-            return;
-          }
-          setError(data.message || 'Invalid data');
+        if (response.status === 401) {
+          setError('Your session has expired. Please login again.');
+          setShowErrorAlert(true);
+          setIsSubmitting(false);
+          // Redirect to login page after a short delay
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+          return;
+        }
+        if (data.message?.includes('already exists')) {
+          setError('A tutor with this phone number already exists. Please use a different phone number.');
           setShowErrorAlert(true);
           setShowForm(false);
           setIsSubmitting(false);
           return;
         }
-        setError('Failed to create tutor');
+        if (data.errors && data.errors.length > 0) {
+          setError(data.errors.map(error => error.msg).join(', '));
+          setShowErrorAlert(true);
+          setShowForm(false);
+          setIsSubmitting(false);
+          return;
+        }
+        setError(data.message || 'Invalid data');
         setShowErrorAlert(true);
         setShowForm(false);
         setIsSubmitting(false);
         return;
       }
 
-      toast.success('Tutor created successfully!', {
+      toast.success(editingTutor ? 'Tutor updated successfully!' : 'Tutor created successfully!', {
         duration: 3000,
         style: {
           background: '#10b981',
@@ -193,10 +215,12 @@ const TutorManagement = () => {
         }
       });
       setShowForm(false);
+      setEditingTutor(null);
+      resetForm();
       setRefreshKey(prev => prev + 1);
     } catch (error) {
-      console.error('Error creating tutor:', error);
-      setError(error.message || 'Failed to create tutor');
+      console.error('Error saving tutor:', error);
+      setError(error.message || 'Failed to save tutor');
       setShowErrorAlert(true);
       setShowForm(false);
     } finally {
@@ -344,9 +368,9 @@ const TutorManagement = () => {
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => {
-              setSelectedTutor(tutor);
-              setShowForm(true);
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(tutor);
             }}
             className="text-blue-600 hover:text-blue-800 transition-colors"
             disabled={isLoading}
@@ -354,7 +378,10 @@ const TutorManagement = () => {
             <FiEdit2 size={18} />
           </button>
           <button
-            onClick={() => handleDelete(tutor)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(tutor);
+            }}
             className="text-red-600 hover:text-red-800 transition-colors"
             disabled={isLoading || isDeleting}
           >
@@ -598,7 +625,11 @@ const TutorManagement = () => {
       tutorEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tutorPhone.includes(searchTerm);
       
-    const matchesCenter = !selectedCenter || tutor.centerId === selectedCenter;
+    const matchesCenter = !selectedCenter || 
+      (tutor.assignedCenter && 
+        (typeof tutor.assignedCenter === 'string' ? 
+          tutor.assignedCenter === selectedCenter : 
+          tutor.assignedCenter._id === selectedCenter));
     
     return matchesSearch && matchesCenter;
   });
@@ -634,7 +665,11 @@ const TutorManagement = () => {
             <FiDownload className="mr-2" /> Export CSV
           </button>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setEditingTutor(null);
+              resetForm();
+              setShowForm(true);
+            }}
             className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
           >
             Add New Tutor
@@ -749,7 +784,7 @@ const TutorManagement = () => {
             >
               <div className="flex justify-between items-start mb-6">
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Add New Tutor
+                  {editingTutor ? 'Edit Tutor' : 'Add New Tutor'}
                 </h2>
                 <button
                   onClick={handleFormClose}
@@ -796,7 +831,7 @@ const TutorManagement = () => {
                         type="text"
                         name="name"
                         value={formData.name}
-                        onChange={handleChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
                       />
@@ -815,7 +850,7 @@ const TutorManagement = () => {
                         type="email"
                         name="email"
                         value={formData.email}
-                        onChange={handleChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
                       />
@@ -834,7 +869,7 @@ const TutorManagement = () => {
                         type="tel"
                         name="phone"
                         value={formData.phone}
-                        onChange={handleChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                         pattern="[0-9]{10}"
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
@@ -852,7 +887,7 @@ const TutorManagement = () => {
                         type="text"
                         name="password"
                         value={formData.password}
-                        onChange={handleChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
                       />
@@ -868,7 +903,7 @@ const TutorManagement = () => {
                   <textarea
                     name="assignmentInfo"
                     value={formData.assignmentInfo}
-                    onChange={handleChange}
+                    onChange={(e) => setFormData(prev => ({ ...prev, assignmentInfo: e.target.value }))}
                     rows="3"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter any notes or remarks about the tutor's assignment..."
@@ -883,7 +918,7 @@ const TutorManagement = () => {
                     <select
                       name="assignedCenter"
                       value={formData.assignedCenter}
-                      onChange={handleChange}
+                      onChange={(e) => setFormData(prev => ({ ...prev, assignedCenter: e.target.value }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       required
                     >
@@ -911,7 +946,10 @@ const TutorManagement = () => {
                             name="subjects"
                             value={subject}
                             checked={formData.subjects?.includes(subject)}
-                            onChange={handleChange}
+                            onChange={(e) => {
+                              const subjects = e.target.checked ? [...formData.subjects, e.target.value] : formData.subjects.filter(s => s !== e.target.value);
+                              setFormData(prev => ({ ...prev, subjects }));
+                            }}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <span className="text-sm text-gray-700">{subject}</span>
@@ -929,7 +967,7 @@ const TutorManagement = () => {
                     <select
                       name="sessionType"
                       value={formData.sessionType}
-                      onChange={handleChange}
+                      onChange={(e) => setFormData(prev => ({ ...prev, sessionType: e.target.value }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       required
                     >
@@ -950,7 +988,7 @@ const TutorManagement = () => {
                       <select
                         name="sessionTiming"
                         value={formData.sessionTiming}
-                        onChange={handleChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, sessionTiming: e.target.value }))}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
                       >
@@ -985,10 +1023,10 @@ const TutorManagement = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Creating...
+                        {editingTutor ? 'Updating...' : 'Creating...'}
                       </>
                     ) : (
-                      'Add Tutor'
+                      editingTutor ? 'Update Tutor' : 'Add Tutor'
                     )}
                   </button>
                 </div>
