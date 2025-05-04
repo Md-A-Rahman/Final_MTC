@@ -21,4 +21,24 @@ API.interceptors.request.use(
   }
 );
 
+// Add a response interceptor to handle authentication errors
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // Handle 401 Unauthorized
+      if (error.response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+      // Handle 403 Forbidden
+      if (error.response.status === 403) {
+        window.location.href = '/unauthorized';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default API;

@@ -64,18 +64,22 @@ const updateValidation = [
   body('status').optional().isIn(['active', 'inactive', 'pending']).withMessage('Invalid status')
 ];
 
+// Protect all routes
+router.use(protect);
+
+// Routes that require admin access
 router.route('/')
-  .get(protect, getTutors)
-  .post(protect, adminOnly, tutorValidation, validateRequest, createTutor);
+  .get(getTutors)
+  .post(adminOnly, tutorValidation, validateRequest, createTutor);
 
 router.route('/:id')
-  .get(protect, getTutor)
-  .put(protect, adminOnly, updateValidation, validateRequest, updateTutor)
-  .delete(protect, adminOnly, deleteTutor);
+  .get(getTutor)
+  .put(adminOnly, tutorValidation, validateRequest, updateTutor)
+  .delete(adminOnly, deleteTutor);
 
 // Report routes
-router.get('/:id/attendance', protect, getTutorAttendanceReport);
-router.get('/:id/performance', protect, getTutorPerformanceReport);
-router.get('/:id/students', protect, getTutorStudentsReport);
+router.get('/:id/attendance', getTutorAttendanceReport);
+router.get('/:id/performance', getTutorPerformanceReport);
+router.get('/:id/students', getTutorStudentsReport);
 
 export default router;

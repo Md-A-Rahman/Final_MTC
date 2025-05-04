@@ -6,6 +6,7 @@ export const protect = async (req, res, next) => {
   try {
     let token;
 
+    // Get token from header
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
     }
@@ -14,8 +15,10 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: 'Not authorized to access this route' });
     }
 
+    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // Get user from token
     if (decoded.role === 'admin') {
       req.user = await Admin.findById(decoded.id);
     } else if (decoded.role === 'tutor') {
@@ -29,6 +32,7 @@ export const protect = async (req, res, next) => {
     req.role = decoded.role;
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
     res.status(401).json({ message: 'Not authorized to access this route' });
   }
 };
@@ -36,6 +40,13 @@ export const protect = async (req, res, next) => {
 export const adminOnly = (req, res, next) => {
   if (req.role !== 'admin') {
     return res.status(403).json({ message: 'Access denied. Admin only.' });
+  }
+  next();
+};
+
+export const tutorOnly = (req, res, next) => {
+  if (req.role !== 'tutor') {
+    return res.status(403).json({ message: 'Access denied. Tutor only.' });
   }
   next();
 };

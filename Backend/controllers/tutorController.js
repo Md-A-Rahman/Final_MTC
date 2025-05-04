@@ -48,7 +48,7 @@ export const getTutor = async (req, res) => {
   }
 };
 
-// @desc    Create tutor
+// @desc    Create new tutor
 // @route   POST /api/tutors
 // @access  Private/Admin
 export const createTutor = async (req, res) => {
@@ -66,63 +66,55 @@ export const createTutor = async (req, res) => {
       documents
     } = req.body;
 
-    // Check if tutor exists by phone number
+    // Check if tutor exists
     const tutorExists = await Tutor.findOne({ phone });
     if (tutorExists) {
-      return res.status(400).json({ message: 'Tutor with this phone number already exists' });
+      return res.status(400).json({ message: 'Tutor already exists' });
     }
 
-    // Check if center exists
-    const center = await Center.findById(assignedCenter);
-    if (!center) {
-      return res.status(404).json({ message: 'Center not found' });
-    }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create tutor with optional fields
+    // Create tutor
     const tutor = await Tutor.create({
       name,
       email,
       phone,
-      password: hashedPassword,
+      password,
       qualifications: qualifications || '',
       assignedCenter,
-      subjects: Array.isArray(subjects) ? subjects : [subjects],
+      subjects,
       sessionType,
       sessionTiming,
-      documents: documents || {
-        aadharNumber: '',
-        aadharPhoto: null,
+      documents: {
+        aadharNumber: documents?.aadharNumber || '',
+        aadharPhoto: documents?.aadharPhoto || null,
         bankAccount: {
-          accountNumber: '',
-          ifscCode: '',
-          passbookPhoto: null
+          accountNumber: documents?.bankAccount?.accountNumber || '',
+          ifscCode: documents?.bankAccount?.ifscCode || '',
+          passbookPhoto: documents?.bankAccount?.passbookPhoto || null
         },
-        certificates: null,
-        memos: null,
-        resume: null
+        certificates: documents?.certificates || null,
+        memos: documents?.memos || null,
+        resume: documents?.resume || null
       },
-      status: 'pending'
+      location: {
+        type: 'Point',
+        coordinates: [0, 0] // Default coordinates
+      }
     });
 
-    // Add tutor to center
-    center.tutors.push(tutor._id);
-    await center.save();
-
-    // Return tutor data without password
-    const tutorResponse = await Tutor.findById(tutor._id)
-      .select('-password')
-      .populate('assignedCenter', 'name location');
-
-    res.status(201).json(tutorResponse);
+    res.status(201).json({
+      _id: tutor._id,
+      name: tutor.name,
+      email: tutor.email,
+      phone: tutor.phone,
+      role: tutor.role,
+      assignedCenter: tutor.assignedCenter
+    });
   } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({ message: 'Tutor with this phone number already exists' });
-    }
-    res.status(500).json({ message: error.message });
+    console.error('Create tutor error:', error);
+    res.status(500).json({ 
+      message: 'Error creating tutor',
+      error: error.message 
+    });
   }
 };
 
