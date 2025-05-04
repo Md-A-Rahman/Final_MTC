@@ -9,7 +9,16 @@ const usePost = () => {
   const post = async (url, payload) => {
     setLoading(true);
     try {
-      const res = await axios.post(url, payload);
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      
+      // Create headers with authorization
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      };
+
+      const res = await axios.post(url, payload, { headers });
       setResponse(res.data);
       return { data: res.data };
     } catch (err) {
@@ -20,7 +29,7 @@ const usePost = () => {
         url
       });
       notifyError(err.response?.data?.message || "Something went wrong");
-      return { error: err.response?.data?.message || "Request failed" }; // <--- This line is new
+      return { error: err.response?.data?.message || "Request failed" };
     } finally {
       setLoading(false);
     }

@@ -27,6 +27,14 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
     return null; // or a loading spinner
   }
 
+  // Get center name from tutor profile
+  const getCenterName = () => {
+    if (tutorProfile.assignedCenter?.name) {
+      return tutorProfile.assignedCenter.name;
+    }
+    return 'Center not assigned';
+  };
+
   return (
     <aside className="w-64 bg-white shadow-xl fixed h-screen bg-gradient-to-b from-white to-blue-50">
       <div className="p-6 border-b border-blue-100">
@@ -39,7 +47,7 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{tutorProfile.name}</h2>
-            <p className="text-sm text-gray-600">{tutorProfile.centerName || tutorProfile.assignedCenter}</p>
+            <p className="text-sm text-gray-600">{getCenterName()}</p>
           </div>
         </div>
       </div>
@@ -78,7 +86,7 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
               <span className="text-gray-600">Phone:</span> {tutorProfile.phone}
             </p>
             <p className="text-sm">
-              <span className="text-gray-600">Center:</span> {tutorProfile.centerName || tutorProfile.assignedCenter}
+              <span className="text-gray-600">Center:</span> {getCenterName()}
             </p>
             <p className="text-sm">
               <span className="text-gray-600">Join Date:</span> {new Date(tutorProfile.createdAt).toLocaleDateString()}

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, useMap, Circle } from 'react-leaflet'
 import { FiUsers, FiClock, FiCheck, FiX } from 'react-icons/fi'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import useGet from '../CustomHooks/useGet'
+import usePost from '../CustomHooks/usePost'
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -14,19 +15,41 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
 
+// Custom marker icons
+const createCustomIcon = (color) => {
+  return L.icon({
+    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  })
+}
+
+const redIcon = createCustomIcon('red')
+const blueIcon = createCustomIcon('blue')
+
 const LocationMarker = ({ onLocationUpdate }) => {
   const [position, setPosition] = useState(null)
   const map = useMap()
 
   useEffect(() => {
-    map.locate().on("locationfound", function (e) {
-      setPosition(e.latlng)
-      map.flyTo(e.latlng, map.getZoom())
-      onLocationUpdate(e.latlng)
+    map.locate({
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 5000
+    }).on("locationfound", function (e) {
+      const newPosition = e.latlng
+      setPosition(newPosition)
+      map.flyTo(newPosition, map.getZoom())
+      onLocationUpdate(newPosition)
+    }).on("locationerror", function (e) {
+      console.error("Location error:", e.message)
     })
   }, [map])
 
-  return position === null ? null : <Marker position={position} />
+  return position === null ? null : <Marker position={position} icon={redIcon} />
 }
 
 const TutorOverview = () => {
@@ -34,28 +57,28 @@ const TutorOverview = () => {
   const [currentLocation, setCurrentLocation] = useState(null)
   const [locationMatch, setLocationMatch] = useState(null)
   const [attendanceMarked, setAttendanceMarked] = useState(false)
+  const [error, setError] = useState(null)
+  const [locationError, setLocationError] = useState(null)
+  const [distance, setDistance] = useState(null)
+
+  // Get tutor data from localStorage
+  const tutorData = JSON.parse(localStorage.getItem('user') || '{}')
+  const { post } = usePost()
+
+  // Get center location from tutor data
+  const centerLocation = tutorData.assignedCenter?.coordinates
+    ? {
+        lat: parseFloat(tutorData.assignedCenter.coordinates[0]),
+        lng: parseFloat(tutorData.assignedCenter.coordinates[1])
+      }
+    : null
 
   // Fetch students
   const { response: students, loading } = useGet('/students')
-  const tutorData = JSON.parse(localStorage.getItem('user') || '{}')
 
   // Calculate counts
   const totalStudents = students ? students.length : 0
   const assignedStudents = students ? students.filter(s => (s.assignedTutor && (s.assignedTutor._id || s.assignedTutor) === tutorData._id)).length : 0
-  
-  // Sample center location (this would come from backend)
-
-  const centerLocation = { lat: 17.3850, lng: 78.4867 }
-
-  //after logged in is successfull then uncomment the below piece of code
-
-  
-  // const centerLocation = tutorData?.location?.coordinates
-  // ? {
-  //     lat: tutorData.location.coordinates[1],
-  //     lng: tutorData.location.coordinates[0]
-  //   }
-  // : null;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -67,9 +90,12 @@ const TutorOverview = () => {
 
   const handleLocationUpdate = (location) => {
     setCurrentLocation(location)
-    // Calculate distance between current location and center location
-    const distance = calculateDistance(location, centerLocation)
-    setLocationMatch(distance <= 0.5) // Within 100 meters
+    if (centerLocation) {
+      // Calculate distance between current location and center location
+      const calculatedDistance = calculateDistance(location, centerLocation)
+      setDistance(calculatedDistance)
+      setLocationMatch(calculatedDistance <= 1.3) // Within 1300 meters (1.3 km)
+    }
   }
 
   const calculateDistance = (loc1, loc2) => {
@@ -84,10 +110,39 @@ const TutorOverview = () => {
     return R * c
   }
 
-  const handleMarkAttendance = () => {
-    if (locationMatch) {
-      setAttendanceMarked(true)
-      // Here you would make an API call to mark attendance
+  const handleMarkAttendance = async () => {
+    if (locationMatch && currentLocation) {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          throw new Error('Authentication token not found')
+        }
+
+        const response = await fetch('http://localhost:5000/api/tutors/attendance', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            currentLocation: [currentLocation.lat, currentLocation.lng]
+          })
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || 'Failed to mark attendance')
+        }
+
+        const data = await response.json()
+        if (data.message === 'Attendance submitted successfully') {
+          setAttendanceMarked(true)
+          setError(null)
+        }
+      } catch (error) {
+        console.error('Error marking attendance:', error)
+        setError(error.message || 'Failed to mark attendance. Please try again.')
+      }
     }
   }
 
@@ -95,6 +150,14 @@ const TutorOverview = () => {
     setCurrentLocation(null)
     setLocationMatch(null)
     setAttendanceMarked(false)
+    setError(null)
+    setLocationError(null)
+  }
+
+  if (!centerLocation) {
+    return <div className="text-center text-red-600 p-4">
+      Unable to load center location. Please log in again.
+    </div>
   }
 
   return (
@@ -123,10 +186,20 @@ const TutorOverview = () => {
         className="bg-white rounded-xl shadow-lg p-6"
       >
         <h2 className="text-xl font-bold mb-4">Mark Attendance</h2>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg">
+            {error}
+          </div>
+        )}
+        {locationError && (
+          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg">
+            {locationError}
+          </div>
+        )}
         <div className="h-[400px] rounded-lg overflow-hidden mb-4">
           <MapContainer
-            center={[17.3850, 78.4867]}
-            zoom={13}
+            center={[centerLocation.lat, centerLocation.lng]}
+            zoom={15}
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer
@@ -134,18 +207,33 @@ const TutorOverview = () => {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
             <LocationMarker onLocationUpdate={handleLocationUpdate} />
-            <Marker position={[centerLocation.lat, centerLocation.lng]} />
+            <Marker 
+              position={[centerLocation.lat, centerLocation.lng]} 
+              icon={blueIcon}
+            />
+            <Circle
+              center={[centerLocation.lat, centerLocation.lng]}
+              radius={1300}
+              pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
+            />
           </MapContainer>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
             {locationMatch !== null && (
-              <p className={`text-lg ${locationMatch ? 'text-green-600' : 'text-red-600'}`}>
-                {locationMatch 
-                  ? 'Location verified. You can mark your attendance.'
-                  : 'Location does not match. Cannot mark attendance.'}
-              </p>
+              <div className="space-y-2">
+                <p className={`text-lg ${locationMatch ? 'text-green-600' : 'text-red-600'}`}>
+                  {locationMatch 
+                    ? 'Location verified. You can mark your attendance.'
+                    : 'Location does not match. Cannot mark attendance.'}
+                </p>
+                {distance !== null && (
+                  <p className="text-sm text-gray-600">
+                    Distance to center: {(distance * 1000).toFixed(0)} meters
+                  </p>
+                )}
+              </div>
             )}
           </div>
           <div className="flex gap-4">

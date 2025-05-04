@@ -10,7 +10,9 @@ import {
   deleteTutor,
   getTutorAttendanceReport,
   getTutorPerformanceReport,
-  getTutorStudentsReport
+  getTutorStudentsReport,
+  submitAttendance,
+  getCenterLocation
 } from '../controllers/tutorController.js';
 
 const router = express.Router();
@@ -81,5 +83,18 @@ router.route('/:id')
 router.get('/:id/attendance', getTutorAttendanceReport);
 router.get('/:id/performance', getTutorPerformanceReport);
 router.get('/:id/students', getTutorStudentsReport);
+
+// Attendance submission route
+router.post('/attendance', [
+  body('currentLocation').isArray().withMessage('Current location must be an array of [longitude, latitude]'),
+  body('currentLocation.*').isNumeric().withMessage('Location coordinates must be numbers'),
+  validateRequest
+], submitAttendance);
+
+// Get center location route
+router.post('/get-center-location', [
+  body('tutorId').isMongoId().withMessage('Invalid tutor ID'),
+  validateRequest
+], getCenterLocation);
 
 export default router;

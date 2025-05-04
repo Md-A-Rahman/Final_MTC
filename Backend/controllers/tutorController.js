@@ -1,6 +1,7 @@
 import Tutor from '../models/Tutor.js';
 import Center from '../models/Center.js';
 import bcrypt from 'bcryptjs';
+import { isWithinRadius, calculateDistance } from '../utils/geoUtils.js';
 
 // @desc    Get all tutors
 // @route   GET /api/tutors
@@ -312,5 +313,111 @@ export const getTutorStudentsReport = async (req, res) => {
     // console.log(tutor.name, tutor.location)
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const submitAttendance = async (req, res) => {
+  try {
+    const tutor = await Tutor.findById(req.user._id);
+    if (!tutor) {
+      return res.status(404).json({ message: 'Tutor not found' });
+    }
+
+    const center = await Center.findById(tutor.assignedCenter);
+    if (!center) {
+      return res.status(404).json({ message: 'Assigned center not found' });
+    }
+
+    if (!req.body.currentLocation || !Array.isArray(req.body.currentLocation) || req.body.currentLocation.length !== 2) {
+      return res.status(400).json({ message: 'Invalid location data provided' });
+    }
+
+    const [tutorLat, tutorLon] = req.body.currentLocation;
+    const [centerLat, centerLon] = center.coordinates;
+
+    // Check if tutor is within 1300 meters of the center
+    const isWithinRange = isWithinRadius(
+      tutorLat,
+      tutorLon,
+      centerLat,
+      centerLon,
+      1300 // 1300 meters radius
+    );
+
+    if (!isWithinRange) {
+      const distance = calculateDistance(tutorLat, tutorLon, centerLat, centerLon);
+      return res.status(400).json({
+        message: 'You must be within 1300 meters of the center to submit attendance',
+        distance: distance,
+        tutorLocation: [tutorLat, tutorLon],
+        centerLocation: [centerLat, centerLon]
+      });
+    }
+
+    // Record attendance
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendanceRecord = {
+      date: today,
+      status: 'present',
+      location: {
+        type: 'Point',
+        coordinates: [tutorLon, tutorLat]
+      },
+      center: center._id,
+      centerName: center.name
+    };
+
+    // Add to attendance array if it doesn't exist for today
+    const existingAttendanceIndex = tutor.attendance.findIndex(
+      record => record.date.getTime() === today.getTime()
+    );
+
+    if (existingAttendanceIndex === -1) {
+      tutor.attendance.push(attendanceRecord);
+    } else {
+      tutor.attendance[existingAttendanceIndex] = attendanceRecord;
+    }
+
+    await tutor.save();
+
+    res.status(200).json({
+      message: 'Attendance submitted successfully',
+      attendance: attendanceRecord
+    });
+  } catch (error) {
+    console.error('Error submitting attendance:', error);
+    res.status(500).json({ 
+      message: 'Error submitting attendance',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// @desc    Get center location for a tutor
+// @route   POST /api/tutors/get-center-location
+// @access  Private/Tutor
+export const getCenterLocation = async (req, res) => {
+  try {
+    const tutor = await Tutor.findById(req.body.tutorId)
+      .populate('assignedCenter', 'location coordinates');
+    
+    if (!tutor) {
+      return res.status(404).json({ message: 'Tutor not found' });
+    }
+
+    if (!tutor.assignedCenter) {
+      return res.status(404).json({ message: 'No center assigned to this tutor' });
+    }
+
+    res.json({
+      centerId: tutor.assignedCenter._id,
+      centerName: tutor.assignedCenter.name,
+      coordinates: tutor.assignedCenter.coordinates
+    });
+  } catch (error) {
+    console.error('Error getting center location:', error);
+    res.status(500).json({ message: 'Error getting center location' });
   }
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { FiPhone, FiLock, FiMapPin, FiRefreshCw } from "react-icons/fi";
+import { FiPhone, FiLock, FiMapPin, FiRefreshCw, FiCheckCircle } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import TutorDashboard from "../components/tutor/TutorDashboard";
 import usePost from "../components/CustomHooks/usePost";
@@ -17,6 +17,8 @@ const TutorPage = () => {
   const [distanceFromCenter, setDistanceFromCenter] = useState(null);
   const [isRefreshingLocation, setIsRefreshingLocation] = useState(false);
   const [pendingLocationUpdate, setPendingLocationUpdate] = useState(false);
+  const [attendanceStatus, setAttendanceStatus] = useState(null);
+  const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
   const navigate = useNavigate();
   const { post, loading } = usePost();
 
@@ -94,6 +96,31 @@ const TutorPage = () => {
       setPendingLocationUpdate(true);
     } finally {
       setIsGettingLocation(false);
+    }
+  };
+
+  const submitAttendance = async () => {
+    setIsSubmittingAttendance(true);
+    try {
+      const currentLocation = await getCurrentLocation();
+      const token = localStorage.getItem("token");
+      
+      const result = await post("http://localhost:5000/api/tutors/attendance", {
+        currentLocation,
+        token
+      });
+
+      if (result.data.message === 'Attendance submitted successfully') {
+        setAttendanceStatus('success');
+        setTimeout(() => setAttendanceStatus(null), 3000);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to submit attendance. Please try again.");
+      if (err.response?.data?.distance) {
+        setDistanceFromCenter(err.response.data.distance);
+      }
+    } finally {
+      setIsSubmittingAttendance(false);
     }
   };
 
@@ -259,6 +286,27 @@ const TutorPage = () => {
               )}
             </motion.button>
           </form>
+
+          {isLoggedIn && (
+            <div className="mt-6">
+              <button
+                onClick={submitAttendance}
+                disabled={isSubmittingAttendance}
+                className="w-full btn bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 py-3 rounded-lg text-lg font-medium transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center"
+              >
+                {isSubmittingAttendance ? (
+                  <FiRefreshCw className="animate-spin mr-2" />
+                ) : attendanceStatus === 'success' ? (
+                  <>
+                    <FiCheckCircle className="mr-2" />
+                    Attendance Submitted
+                  </>
+                ) : (
+                  'Submit Attendance'
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>

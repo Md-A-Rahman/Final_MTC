@@ -89,22 +89,45 @@ const tutorSchema = mongoose.Schema(
       enum: ['active', 'inactive', 'pending'],
       default: 'pending'
     },
-    location: {
-      type: {
-        type: String,
-        enum: ['Point'],
-        default: 'Point'
+    attendance: [{
+      date: {
+        type: Date,
+        required: true
       },
-      coordinates: {
-        type: [Number],
-        default: [0, 0]
+      status: {
+        type: String,
+        enum: ['present', 'absent'],
+        required: true
+      },
+      location: {
+        type: {
+          type: String,
+          enum: ['Point'],
+          default: 'Point'
+        },
+        coordinates: {
+          type: [Number],
+          required: true
+        }
+      },
+      center: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Center',
+        required: true
+      },
+      centerName: {
+        type: String,
+        required: true
       }
-    }
+    }]
   },
   {
     timestamps: true
   }
 );
+
+// Create indexes for geospatial queries
+tutorSchema.index({ 'attendance.location': '2dsphere' });
 
 // Hash password before saving
 tutorSchema.pre('save', async function(next) {
