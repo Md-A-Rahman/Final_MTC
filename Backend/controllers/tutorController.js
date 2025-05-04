@@ -301,6 +301,7 @@ export const getTutorStudentsReport = async (req, res) => {
     res.json({
       tutorId: tutor._id,
       name: tutor.name,
+      location: tutor.location,
       students: {
         total: 0,
         active: 0,
@@ -308,6 +309,7 @@ export const getTutorStudentsReport = async (req, res) => {
         byClass: []
       }
     });
+    // console.log(tutor.name, tutor.location)
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

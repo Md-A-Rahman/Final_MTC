@@ -42,9 +42,20 @@ const TutorOverview = () => {
   // Calculate counts
   const totalStudents = students ? students.length : 0
   const assignedStudents = students ? students.filter(s => (s.assignedTutor && (s.assignedTutor._id || s.assignedTutor) === tutorData._id)).length : 0
-
+  
   // Sample center location (this would come from backend)
+
   const centerLocation = { lat: 17.3850, lng: 78.4867 }
+
+  //after logged in is successfull then uncomment the below piece of code
+
+  
+  // const centerLocation = tutorData?.location?.coordinates
+  // ? {
+  //     lat: tutorData.location.coordinates[1],
+  //     lng: tutorData.location.coordinates[0]
+  //   }
+  // : null;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -58,7 +69,7 @@ const TutorOverview = () => {
     setCurrentLocation(location)
     // Calculate distance between current location and center location
     const distance = calculateDistance(location, centerLocation)
-    setLocationMatch(distance <= 0.1) // Within 100 meters
+    setLocationMatch(distance <= 0.5) // Within 100 meters
   }
 
   const calculateDistance = (loc1, loc2) => {

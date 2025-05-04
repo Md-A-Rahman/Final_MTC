@@ -16,8 +16,8 @@ export const getStudents = async (req, res) => {
 
     const students = await Student.find(query)
       .populate('assignedCenter', 'name location')
-      .populate('assignedTutor', 'name');
-      
+      .populate('assignedTutor', 'name location email phone assignedCenter');
+    // const tutor = await Tutor.findOne({assignedTutor})
     res.json(students);
   } catch (error) {
     res.status(500).json({ message: error.message });
