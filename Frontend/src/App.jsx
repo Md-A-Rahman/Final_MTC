@@ -26,13 +26,13 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <CenterRefetchProvider>
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
-        <main className="flex-grow">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/tutor" element={<TutorPage />} />
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      <main className="flex-grow">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/tutor" element={<TutorPage />} />
             <Route 
               path="/admin-dashboard" 
               element={
@@ -41,12 +41,12 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route path="/tutor-dashboard" element={<TutorDashboard />} />
-          </Routes>
-        </main>
-        <ToastContainer />
-        {/* <Footer /> */}
-      </div>
+          <Route path="/tutor-dashboard" element={<TutorDashboard />} />
+        </Routes>
+      </main>
+      <ToastContainer />
+      {/* <Footer /> */}
+    </div>
     </CenterRefetchProvider>
   )
 }

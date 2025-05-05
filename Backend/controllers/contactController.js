@@ -27,6 +27,7 @@ export const sendContactForm = async (req, res) => {
     await transporter.sendMail(mailOptions);
     res.status(200).json({ message: 'Contact form sent to admins via email!' });
   } catch (error) {
+    console.error('EMAIL ERROR:', error);
     res.status(500).json({ message: 'Failed to send contact form', error: error.message });
   }
 }; 

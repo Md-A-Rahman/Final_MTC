@@ -43,6 +43,7 @@ export const createTutorApplication = async (req, res) => {
     await transporter.sendMail(mailOptions);
     res.status(200).json({ message: 'Application sent to admins via email!' });
   } catch (error) {
+    console.error('EMAIL ERROR:', error);
     res.status(500).json({ message: 'Failed to send application', error: error.message });
   }
 };

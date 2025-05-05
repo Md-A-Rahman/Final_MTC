@@ -209,25 +209,11 @@ const Reports = () => {
         </h1>
         <div className="flex gap-4">
           <button
-            onClick={handleExportPDF}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
-          >
-            <FiDownload className="mr-2" /> Export PDF
-          </button>
-          <button
             onClick={handleExportCSV}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
           >
             <FiDownload className="mr-2" /> Export CSV
           </button>
-          {isToday(selectedDate) && (
-            <button
-              onClick={() => setShowAttendanceForm(true)}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
-            >
-              Mark Today's Attendance
-            </button>
-          )}
         </div>
       </div>
 

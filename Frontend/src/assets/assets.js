@@ -5,6 +5,7 @@ import Programs_image from './program_img.jpg'
 import transformationStoryOne from './firstOne.png'
 import transformationStoryTwo from './second.jpg'
 import transformationStoryThree from './three.jpg'
+import logo from './logo-bg-remove.png'
 
 export const assets = {
   bg_books,
@@ -14,4 +15,5 @@ export const assets = {
   transformationStoryOne,
   transformationStoryTwo,
   transformationStoryThree,
+  logo,
 }

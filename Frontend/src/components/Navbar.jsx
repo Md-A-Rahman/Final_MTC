@@ -5,10 +5,12 @@ import { motion } from 'framer-motion';
 import { FiMenu, FiX } from 'react-icons/fi';
 import Logo from './Logo';
 
+
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
+  const isLoginPage = location.pathname === '/admin' || location.pathname === '/tutor';
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
@@ -33,16 +35,27 @@ const Navbar = () => {
     { name: 'Tutor', path: '/tutor', special: true }
   ];
 
+  const showLogoHalo = location.pathname === '/' && !isScrolled && !isLoginPage;
+
   return (
     <nav className={`fixed w-full z-50 transition-all duration-300 ${
-      isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'
+      isLoginPage
+        ? 'bg-white shadow-md py-2'
+        : isScrolled
+          ? 'bg-white shadow-md py-2'
+          : 'bg-transparent py-4'
     }`}>
       <div className="container-custom">
         <div className="flex items-center justify-between">
           {/* Logo */}
           <RouterLink to="/" className="relative z-10" onClick={closeMenu}>
             <div className="flex items-center">
-              <Logo useLink={false} />
+              <span
+                className={`relative ${showLogoHalo ? 'after:content-[" "] after:absolute after:inset-0 after:rounded-full after:bg-white after:opacity-60 after:w-full after:h-full after:blur-[10px] after:-z-10' : ''}`}
+                style={{ display: 'inline-block' }}
+              >
+                <Logo useLink={false} />
+              </span>
             </div>
           </RouterLink>
 
@@ -58,7 +71,7 @@ const Navbar = () => {
                     duration={500}
                     offset={-70}
                     className={`px-3 py-2 text-sm font-medium rounded-md cursor-pointer transition-colors ${
-                      isScrolled
+                      (isScrolled || isLoginPage)
                         ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
                         : 'text-white hover:text-accent-300'
                     }`}
@@ -71,7 +84,7 @@ const Navbar = () => {
                     key={link.name}
                     to={`/#${link.path}`}
                     className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                      isScrolled
+                      (isScrolled || isLoginPage)
                         ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
                         : 'text-white hover:text-accent-300'
                     }`}
@@ -93,7 +106,7 @@ const Navbar = () => {
                     link.name === 'Admin'
                       ? 'bg-secondary-600 text-white hover:bg-secondary-700'
                       : 'bg-primary-600 text-white hover:bg-primary-700'
-                  }`}
+                  } ${isLoginPage ? 'shadow' : ''}`}
                   onClick={closeMenu}
                 >
                   {link.name}
@@ -107,7 +120,7 @@ const Navbar = () => {
             <button
               onClick={toggleMenu}
               className={`p-2 rounded-md ${
-                isScrolled ? 'text-gray-700 hover:text-primary-600' : 'text-white hover:text-accent-300'
+                (isScrolled || isLoginPage) ? 'text-gray-700 hover:text-primary-600' : 'text-white hover:text-accent-300'
               }`}
             >
               {isOpen ? <FiX size={24} /> : <FiMenu size={24} />}
@@ -135,7 +148,11 @@ const Navbar = () => {
                     smooth={true}
                     duration={500}
                     offset={-70}
-                    className="block px-3 py-2 text-base font-medium rounded-md text-gray-700 hover:text-primary-600 hover:bg-gray-50 cursor-pointer"
+                    className={`block px-3 py-2 text-base font-medium rounded-md cursor-pointer ${
+                      (isScrolled || isLoginPage || showLogoHalo)
+                        ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                        : 'text-white hover:text-accent-300'
+                    }`}
                     onClick={closeMenu}
                   >
                     {link.name}
@@ -144,7 +161,11 @@ const Navbar = () => {
                   <RouterLink
                     key={link.name}
                     to={`/#${link.path}`}
-                    className="block px-3 py-2 text-base font-medium rounded-md text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+                    className={`block px-3 py-2 text-base font-medium rounded-md cursor-pointer ${
+                      (isScrolled || isLoginPage || showLogoHalo)
+                        ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                        : 'text-white hover:text-accent-300'
+                    }`}
                     onClick={closeMenu}
                   >
                     {link.name}
