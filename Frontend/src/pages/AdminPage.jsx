@@ -22,7 +22,16 @@ const AdminPage = () => {
   const navigate = useNavigate()
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+    
+    // Check if already logged in
+    const token = localStorage.getItem('token');
+    const userRole = localStorage.getItem('userRole');
+    
+    if (token && userRole === 'admin') {
+      setIsLoggedIn(true);
+      navigate('/admin-dashboard');
+    }
+  }, [navigate]);
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,9 +50,9 @@ const AdminPage = () => {
         throw new Error(data.message || 'Invalid credentials');
       }
   
-      // Store the token securely
+      // Store the token and role securely
       localStorage.setItem('token', data.token);
-      localStorage.setItem('userRole', 'admin');
+      localStorage.setItem('userRole', data.role);
       setIsLoggedIn(true);
       navigate('/admin-dashboard');
     } catch (err) {
@@ -73,14 +82,6 @@ const AdminPage = () => {
   if (isLoggedIn) {
     return <AdminDashboard />
   }
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      navigate('/admin-dashboard'); // ✅ Redirects logged-in users
-    }
-  }, []);
-  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 pt-24 pb-16 flex items-center justify-center px-4">

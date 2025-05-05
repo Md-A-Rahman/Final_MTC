@@ -8,6 +8,7 @@ import { jsPDF } from 'jspdf'
 import useGet from '../CustomHooks/useGet'
 import { toast } from 'react-hot-toast'
 import "react-datepicker/dist/react-datepicker.css"
+import { useCenterRefetch } from '../../context/CenterRefetchContext'
 
 const TutorStudents = () => {
   const [showForm, setShowForm] = useState(false)
@@ -53,6 +54,8 @@ const TutorStudents = () => {
     assignedTutor: tutorData._id // Assign the current tutor
   })
 
+  const refetchCenterContext = useCenterRefetch()
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     setFormData(prev => ({
@@ -83,21 +86,29 @@ const TutorStudents = () => {
         fatherName: formData.fatherName.trim(),
         contact: formData.contact.trim(),
         isOrphan: formData.isOrphan,
-        guardianInfo: formData.isOrphan ? {
-          name: formData.guardianName.trim(),
-          contact: formData.guardianContact.trim()
-        } : undefined,
         isNonSchoolGoing: formData.isNonSchoolGoing,
-        schoolInfo: !formData.isNonSchoolGoing ? {
-          name: formData.schoolName.trim(),
-          class: formData.class.trim()
-        } : undefined,
         gender: formData.gender,
         medium: formData.medium,
         aadharNumber: formData.aadharNumber.trim(),
-        assignedCenter: tutorData.assignedCenter,
+        assignedCenter: tutorData.assignedCenter && tutorData.assignedCenter._id ? tutorData.assignedCenter._id : tutorData.assignedCenter,
         assignedTutor: tutorData._id,
         remarks: formData.remarks.trim()
+      };
+
+      // Only add guardianInfo if isOrphan is true
+      if (formData.isOrphan) {
+        formattedData.guardianInfo = {
+          name: formData.guardianName.trim(),
+          contact: formData.guardianContact.trim()
+        };
+      }
+
+      // Only add schoolInfo if isNonSchoolGoing is false
+      if (!formData.isNonSchoolGoing) {
+        formattedData.schoolInfo = {
+          name: formData.schoolName.trim(),
+          class: formData.class.trim()
+        };
       }
 
       console.log('Sending student data:', formattedData) // Debug log
@@ -114,7 +125,8 @@ const TutorStudents = () => {
       const responseData = await response.json()
 
       if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to add student')
+        console.error('Backend error:', responseData);
+        throw new Error(responseData.message || JSON.stringify(responseData) || 'Failed to add student')
       }
 
       toast.success('Student added successfully!')
@@ -136,6 +148,10 @@ const TutorStudents = () => {
         assignedTutor: tutorData._id
       })
       refetch() // Refresh the students list
+      // Trigger center refetch for instant update
+      if (refetchCenterContext && refetchCenterContext.current) {
+        refetchCenterContext.current();
+      }
     } catch (error) {
       console.error('Error adding student:', error) // Debug log
       toast.error(error.message || 'Failed to add student')
@@ -166,6 +182,10 @@ const TutorStudents = () => {
 
         toast.success('Student deleted successfully!')
         refetch() // Refresh the students list
+        // Trigger center refetch for instant update
+        if (refetchCenterContext && refetchCenterContext.current) {
+          refetchCenterContext.current();
+        }
       } catch (error) {
         toast.error(error.message || 'Failed to delete student')
       }
@@ -331,7 +351,7 @@ const TutorStudents = () => {
         gender: editFormData.gender,
         medium: editFormData.medium,
         aadharNumber: editFormData.aadharNumber,
-        assignedCenter: tutorData.assignedCenter,
+        assignedCenter: tutorData.assignedCenter && tutorData.assignedCenter._id ? tutorData.assignedCenter._id : tutorData.assignedCenter,
         assignedTutor: tutorData._id,
         remarks: editFormData.remarks
       }
@@ -375,6 +395,10 @@ const TutorStudents = () => {
       toast.success('Student deleted successfully!')
       setShowDetails(null)
       refetch()
+      // Trigger center refetch for instant update
+      if (refetchCenterContext && refetchCenterContext.current) {
+        refetchCenterContext.current();
+      }
     } catch (error) {
       toast.error(error.message || 'Failed to delete student')
     } finally {
@@ -510,10 +534,10 @@ const TutorStudents = () => {
                     <div className="text-sm text-gray-500">{student.fatherName}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{student.class}</div>
+                    <div className="text-sm text-gray-900">{student.schoolInfo?.class || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{student.schoolName}</div>
+                    <div className="text-sm text-gray-900">{student.schoolInfo?.name || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
@@ -868,11 +892,11 @@ const TutorStudents = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Class</p>
-                  <p className="font-medium">{showDetails.class || (showDetails.schoolInfo && showDetails.schoolInfo.class)}</p>
+                  <p className="font-medium">{showDetails.schoolInfo?.class || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">School</p>
-                  <p className="font-medium">{showDetails.schoolName || (showDetails.schoolInfo && showDetails.schoolInfo.name)}</p>
+                  <p className="font-medium">{showDetails.schoolInfo?.name || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Gender</p>

@@ -102,6 +102,9 @@ export const createTutor = async (req, res) => {
       }
     });
 
+    // Add tutor to center's tutors array
+    await Center.findByIdAndUpdate(tutor.assignedCenter, { $addToSet: { tutors: tutor._id } });
+
     res.status(201).json({
       _id: tutor._id,
       name: tutor.name,
@@ -212,6 +215,8 @@ export const deleteTutor = async (req, res) => {
     }
 
     await tutor.deleteOne();
+    // Remove tutor from center's tutors array
+    await Center.findByIdAndUpdate(tutor.assignedCenter, { $pull: { tutors: tutor._id } });
     res.json({ message: 'Tutor removed' });
   } catch (error) {
     res.status(500).json({ message: error.message });

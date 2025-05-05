@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiEdit2, FiTrash2, FiX, FiMapPin, FiUpload, FiImage, FiAlertTriangle, FiFilter } from 'react-icons/fi';
@@ -7,6 +7,7 @@ import L from 'leaflet';
 import useGet from '../CustomHooks/useGet';
 import { reverseGeocode } from './utils/reverseGeocode';
 import { toast } from 'react-hot-toast';
+import { useCenterRefetch } from '../../context/CenterRefetchContext';
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -61,6 +62,13 @@ const CenterManagement = () => {
 
   // Get centers data with our fixed useGet hook
   const { response: centers, error, loading, refetch } = useGet("/Centers");
+  const refetchContext = useCenterRefetch();
+
+  useEffect(() => {
+    if (refetchContext) {
+      refetchContext.current = refetch;
+    }
+  }, [refetch, refetchContext]);
 
   const handleCoordinatesChange = (e) => {
     const value = e.target.value;

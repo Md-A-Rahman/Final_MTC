@@ -126,9 +126,8 @@ export const createStudent = async (req, res) => {
 
     const student = await Student.create(studentData);
 
-    // Add student to center
-    center.students.push(student._id);
-    await center.save();
+    // Add student to center's students array (use $addToSet for safety)
+    await Center.findByIdAndUpdate(student.assignedCenter, { $addToSet: { students: student._id } });
 
     // Populate the response with center and tutor details
     const populatedStudent = await Student.findById(student._id)
@@ -205,12 +204,8 @@ export const deleteStudent = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Remove student from center
-    const center = await Center.findById(student.assignedCenter);
-    if (center) {
-      center.students = center.students.filter(id => id.toString() !== student._id.toString());
-      await center.save();
-    }
+    // Remove student from center's students array
+    await Center.findByIdAndUpdate(student.assignedCenter, { $pull: { students: student._id } });
 
     await student.deleteOne();
     res.json({ message: 'Student removed' });

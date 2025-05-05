@@ -15,10 +15,14 @@ const AdminDashboard = () => {
   // Redirect if not logged in
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) {
+    const userRole = localStorage.getItem('userRole');
+    
+    if (!token || userRole !== 'admin') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userRole');
       navigate('/admin');
     }
-  }, []);
+  }, [navigate]);
 
   const renderContent = () => {
     switch (activeTab) {

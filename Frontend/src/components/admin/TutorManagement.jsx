@@ -5,6 +5,7 @@ import useGetTutors from "../CustomHooks/useGetTutors"
 import { FiUser, FiMail, FiPhone, FiBook, FiMapPin, FiClock, FiUpload, FiX, FiDownload, FiEdit2, FiTrash2, FiSearch, FiFilter } from 'react-icons/fi'
 import Papa from 'papaparse'
 import { toast } from 'react-hot-toast'
+import { useCenterRefetch } from '../../context/CenterRefetchContext'
 
 const TutorManagement = () => {
   const [editingTutor, setEditingTutor] = useState(null);
@@ -49,6 +50,8 @@ const TutorManagement = () => {
     'Urdu',
     'Hindi'
   ]
+
+  const refetchCenterContext = useCenterRefetch();
 
   const handleEdit = (tutor) => {
     setEditingTutor(tutor);
@@ -218,6 +221,10 @@ const TutorManagement = () => {
       setEditingTutor(null);
       resetForm();
       setRefreshKey(prev => prev + 1);
+      // Trigger center refetch for instant update
+      if (refetchCenterContext && refetchCenterContext.current) {
+        refetchCenterContext.current();
+      }
     } catch (error) {
       console.error('Error saving tutor:', error);
       setError(error.message || 'Failed to save tutor');
@@ -305,6 +312,10 @@ const TutorManagement = () => {
       });
       
       setRefreshKey(prev => prev + 1);
+      // Trigger center refetch for instant update
+      if (refetchCenterContext && refetchCenterContext.current) {
+        refetchCenterContext.current();
+      }
     } catch (error) {
       setError(error.message);
       setShowErrorAlert(true);

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { FiBookOpen, FiHeart, FiDollarSign, FiX, FiUser, FiMail, FiPhone, FiMapPin, FiBook, FiClock, FiUpload } from 'react-icons/fi'
@@ -16,7 +16,15 @@ const CallToAction = () => {
     memos: null,
     resume: null
   })
+  const [contactFormData, setContactFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  })
   const [submitStatus, setSubmitStatus] = useState('')
+  const [contactSubmitStatus, setContactSubmitStatus] = useState('')
+  
   const centers = [
     { id: 1, name: 'Malakpet Center' },
     { id: 2, name: 'Mehdipatnam Center' },
@@ -24,6 +32,7 @@ const CallToAction = () => {
   const subjects = [
     'Mathematics', 'Science', 'English', 'Social Studies', 'Islamic Studies', 'Urdu', 'Hindi'
   ]
+  
   const handleChange = (e) => {
     const { name, value, type } = e.target
     if (type === 'file') {
@@ -37,6 +46,12 @@ const CallToAction = () => {
       setFormData({ ...formData, [name]: value })
     }
   }
+  
+  const handleContactChange = (e) => {
+    const { name, value } = e.target
+    setContactFormData({ ...contactFormData, [name]: value })
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitStatus('')
@@ -48,25 +63,41 @@ const CallToAction = () => {
     }
 
     try {
+      // Create FormData object to handle file uploads
+      const formDataToSend = new FormData()
+      formDataToSend.append('fullName', formData.fullName)
+      formDataToSend.append('email', formData.email)
+      formDataToSend.append('phone', formData.phone)
+      formDataToSend.append('qualifications', formData.qualifications)
+      formDataToSend.append('certificates', formData.certificates)
+      formDataToSend.append('memos', formData.memos)
+      formDataToSend.append('resume', formData.resume)
+      
+      // Send application data to backend
       const response = await fetch('http://localhost:5000/api/tutor-applications', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          qualifications: formData.qualifications,
-          certificates: formData.certificates?.name || '',
-          memos: formData.memos?.name || '',
-          resume: formData.resume?.name || ''
-        })
+        body: formDataToSend
       })
 
       if (!response.ok) {
         throw new Error('Failed to submit application')
       }
+
+      // Send notification emails to all admins
+      await fetch('http://localhost:5000/api/notify-admins', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subject: 'New Tutor Application',
+          messageType: 'tutor_application',
+          applicantName: formData.fullName,
+          applicantEmail: formData.email,
+          applicantPhone: formData.phone,
+          qualifications: formData.qualifications
+        })
+      })
 
       setSubmitStatus('Application submitted successfully!')
       setFormData({
@@ -78,9 +109,66 @@ const CallToAction = () => {
         memos: null,
         resume: null
       })
-      setShowTutorModal(false)
+      
+      // Close modal after successful submission
+      setTimeout(() => {
+        setShowTutorModal(false)
+        setSubmitStatus('')
+      }, 3000)
     } catch (error) {
       setSubmitStatus('Error submitting application. Please try again.')
+      console.error('Error:', error)
+    }
+  }
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault()
+    setContactSubmitStatus('')
+    
+    try {
+      // Send contact form data to backend
+      const response = await fetch('http://localhost:5000/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactFormData)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit contact form')
+      }
+
+      // Send notification emails to all admins
+      await fetch('http://localhost:5000/api/notify-admins', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subject: `New Contact Form: ${contactFormData.subject}`,
+          messageType: 'contact_form',
+          contactName: contactFormData.name,
+          contactEmail: contactFormData.email,
+          contactSubject: contactFormData.subject,
+          contactMessage: contactFormData.message
+        })
+      })
+
+      setContactSubmitStatus('Message sent successfully!')
+      setContactFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+      })
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setContactSubmitStatus('')
+      }, 3000)
+    } catch (error) {
+      setContactSubmitStatus('Error sending message. Please try again.')
       console.error('Error:', error)
     }
   }
@@ -216,7 +304,7 @@ const CallToAction = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Certificates</label>
                       <div className="relative">
-                        <input type="file" name="certificates" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="certificates" />
+                        <input type="file" name="certificates" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="certificates" required />
                         <label htmlFor="certificates" className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                           <FiUpload className="mr-2" />
                           <span className="text-sm">Upload Certificates</span>
@@ -227,7 +315,7 @@ const CallToAction = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Memos</label>
                       <div className="relative">
-                        <input type="file" name="memos" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="memos" />
+                        <input type="file" name="memos" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="memos" required />
                         <label htmlFor="memos" className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                           <FiUpload className="mr-2" />
                           <span className="text-sm">Upload Memos</span>
@@ -238,7 +326,7 @@ const CallToAction = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Resume</label>
                       <div className="relative">
-                        <input type="file" name="resume" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="resume" />
+                        <input type="file" name="resume" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="resume" required />
                         <label htmlFor="resume" className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                           <FiUpload className="mr-2" />
                           <span className="text-sm">Upload Resume</span>
@@ -252,11 +340,16 @@ const CallToAction = () => {
                   <button type="button" onClick={() => setShowTutorModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg">Submit Application</button>
                 </div>
-                {submitStatus && <div className="text-center text-green-600 font-medium mt-2">{submitStatus}</div>}
+                {submitStatus && (
+                  <div className={`text-center font-medium mt-2 ${submitStatus.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
+                    {submitStatus}
+                  </div>
+                )}
               </form>
             </motion.div>
           </div>
         )}
+
         {/* Contact Form */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -302,24 +395,32 @@ const CallToAction = () => {
             </div>
             
             <div>
-              <form className="space-y-4">
+              <form className="space-y-4" onSubmit={handleContactSubmit}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                     <input 
                       type="text" 
-                      id="name" 
+                      id="name"
+                      name="name"
+                      value={contactFormData.name}
+                      onChange={handleContactChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500" 
                       placeholder="Your name"
+                      required
                     />
                   </div>
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input 
                       type="email" 
-                      id="email" 
+                      id="email"
+                      name="email"
+                      value={contactFormData.email}
+                      onChange={handleContactChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500" 
                       placeholder="Your email"
+                      required
                     />
                   </div>
                 </div>
@@ -327,23 +428,36 @@ const CallToAction = () => {
                   <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
                   <input 
                     type="text" 
-                    id="subject" 
+                    id="subject"
+                    name="subject"
+                    value={contactFormData.subject}
+                    onChange={handleContactChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500" 
                     placeholder="Subject"
+                    required
                   />
                 </div>
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message</label>
                   <textarea 
-                    id="message" 
+                    id="message"
+                    name="message"
+                    value={contactFormData.message}
+                    onChange={handleContactChange}
                     rows="4" 
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500" 
                     placeholder="Your message"
+                    required
                   ></textarea>
                 </div>
                 <button type="submit" className="w-full btn btn-primary">
                   Send Message
                 </button>
+                {contactSubmitStatus && (
+                  <div className={`text-center font-medium mt-2 ${contactSubmitStatus.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
+                    {contactSubmitStatus}
+                  </div>
+                )}
               </form>
             </div>
           </div>
