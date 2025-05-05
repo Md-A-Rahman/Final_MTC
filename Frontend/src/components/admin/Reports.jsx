@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { FiDownload, FiCalendar, FiFilter, FiCheck, FiX } from 'react-icons/fi'
 import DatePicker from 'react-datepicker'
@@ -12,28 +12,65 @@ const Reports = () => {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedCenter, setSelectedCenter] = useState('')
   const [showAttendanceForm, setShowAttendanceForm] = useState(false)
+  const [tutors, setTutors] = useState([])
+  const [centers, setCenters] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Sample data - replace with actual data from backend
-  const centers = [
-    { id: 1, name: 'Malakpet Center' },
-    { id: 2, name: 'Mehdipatnam Center' },
-  ]
-
-  const tutors = [
-    {
-      id: 1,
-      name: 'Ahmed Khan',
-      center: 'Malakpet Center',
-      attendance: {
-        '2023-12-01': true,
-        '2023-12-02': true,
-        '2023-12-03': false, // Sunday
-        '2023-12-04': true,
-        '2023-12-05': false,
+  // Fetch centers
+  useEffect(() => {
+    const fetchCenters = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/centers', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        const data = await response.json()
+        if (response.ok) {
+          setCenters(data)
+        } else {
+          throw new Error(data.message || 'Failed to fetch centers')
+        }
+      } catch (err) {
+        setError(err.message)
       }
-    },
-    // Add more sample tutors...
-  ]
+    }
+    fetchCenters()
+  }, [])
+
+  // Fetch attendance data when date or center changes
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      setLoading(true)
+      try {
+        const month = selectedDate.getMonth() + 1
+        const year = selectedDate.getFullYear()
+        const centerId = selectedCenter || ''
+        
+        const response = await fetch(
+          `http://localhost:5000/api/attendance/report?month=${month}&year=${year}&centerId=${centerId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        )
+        
+        const data = await response.json()
+        if (response.ok) {
+          setTutors(data)
+        } else {
+          throw new Error(data.message || 'Failed to fetch attendance data')
+        }
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchAttendanceData()
+  }, [selectedDate, selectedCenter])
 
   const handleExportCSV = () => {
     const monthDays = eachDayOfInterval({
@@ -43,8 +80,8 @@ const Reports = () => {
 
     const data = tutors.map(tutor => {
       const attendanceData = {
-        'Tutor Name': tutor.name,
-        'Center': tutor.center,
+        'Tutor Name': tutor.tutor.name,
+        'Center': tutor.center.name,
         'Present Days': Object.values(tutor.attendance).filter(Boolean).length,
         'Absent Days': Object.values(tutor.attendance).filter(day => !day).length,
       }
@@ -78,18 +115,21 @@ const Reports = () => {
     doc.text('Monthly Attendance Report', 14, 15)
     doc.setFontSize(12)
     doc.text(`Month: ${format(selectedDate, 'MMMM yyyy')}`, 14, 25)
+    if (selectedCenter) {
+      doc.text(`Center: ${selectedCenter}`, 14, 35)
+    }
 
     // Create table data
     const tableData = tutors.map(tutor => [
-      tutor.name,
-      tutor.center,
+      tutor.tutor.name,
+      tutor.center.name,
       Object.values(tutor.attendance).filter(Boolean).length,
       Object.values(tutor.attendance).filter(day => !day).length,
       `${(Object.values(tutor.attendance).filter(Boolean).length / Object.values(tutor.attendance).length * 100).toFixed(1)}%`
     ])
 
     doc.autoTable({
-      startY: 35,
+      startY: selectedCenter ? 45 : 35,
       head: [['Tutor Name', 'Center', 'Present Days', 'Absent Days', 'Attendance %']],
       body: tableData,
       theme: 'grid',
@@ -101,9 +141,64 @@ const Reports = () => {
     doc.save(`attendance_report_${format(selectedDate, 'MMM_yyyy')}.pdf`)
   }
 
-  const handleMarkAttendance = (tutorId, date, status) => {
-    // Here you would update the attendance in your backend
-    console.log('Marking attendance:', { tutorId, date, status })
+  const handleMarkAttendance = async (tutorId, date, status) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/attendance/mark', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          tutorId,
+          centerId: selectedCenter,
+          date: format(date, 'yyyy-MM-dd'),
+          status: status ? 'present' : 'absent'
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.message || 'Failed to mark attendance')
+      }
+
+      // Refresh attendance data
+      const month = selectedDate.getMonth() + 1
+      const year = selectedDate.getFullYear()
+      const centerId = selectedCenter || ''
+      
+      const attendanceResponse = await fetch(
+        `http://localhost:5000/api/attendance/report?month=${month}&year=${year}&centerId=${centerId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      )
+      
+      const attendanceData = await attendanceResponse.json()
+      if (attendanceResponse.ok) {
+        setTutors(attendanceData)
+      }
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 text-red-600 p-4 rounded-lg">
+        {error}
+      </div>
+    )
   }
 
   return (
@@ -167,7 +262,7 @@ const Reports = () => {
               >
                 <option value="">All Centers</option>
                 {centers.map(center => (
-                  <option key={center.id} value={center.name}>
+                  <option key={center._id} value={center._id}>
                     {center.name}
                   </option>
                 ))}
@@ -199,41 +294,39 @@ const Reports = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {tutors
-                .filter(tutor => !selectedCenter || tutor.center === selectedCenter)
-                .map((tutor) => {
-                  const presentDays = Object.values(tutor.attendance).filter(Boolean).length
-                  const totalDays = Object.values(tutor.attendance).length
-                  const attendancePercentage = (presentDays / totalDays) * 100
+              {tutors.map((tutor) => {
+                const presentDays = Object.values(tutor.attendance).filter(Boolean).length
+                const totalDays = Object.values(tutor.attendance).length
+                const attendancePercentage = (presentDays / totalDays) * 100
 
-                  return (
-                    <tr key={tutor.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="text-sm font-medium text-gray-900">{tutor.name}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{tutor.center}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{presentDays}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{totalDays - presentDays}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm font-medium ${
-                          attendancePercentage >= 90 ? 'text-green-600' :
-                          attendancePercentage >= 75 ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>
-                          {attendancePercentage.toFixed(1)}%
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                return (
+                  <tr key={tutor.tutor._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="text-sm font-medium text-gray-900">{tutor.tutor.name}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{tutor.center.name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{presentDays}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{totalDays - presentDays}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`text-sm font-medium ${
+                        attendancePercentage >= 90 ? 'text-green-600' :
+                        attendancePercentage >= 75 ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {attendancePercentage.toFixed(1)}%
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -248,58 +341,48 @@ const Reports = () => {
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
         >
           <motion.div
-            initial={{ scale: 0.95 }}
+            initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
-            exit={{ scale: 0.95 }}
-            className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl"
+            exit={{ scale: 0.9 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md"
           >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Mark Today's Attendance
-              </h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Mark Today's Attendance</h2>
               <button
                 onClick={() => setShowAttendanceForm(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="text-gray-500 hover:text-gray-700"
               >
-                <FiX size={20} />
+                <FiX size={24} />
               </button>
             </div>
-
             <div className="space-y-4">
-              {tutors.map((tutor) => (
-                <div
-                  key={tutor.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{tutor.name}</p>
-                    <p className="text-sm text-gray-500">{tutor.center}</p>
-                  </div>
+              {tutors.map(tutor => (
+                <div key={tutor.tutor._id} className="flex items-center justify-between">
+                  <span className="text-gray-700">{tutor.tutor.name}</span>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleMarkAttendance(tutor.id, selectedDate, true)}
-                      className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors flex items-center"
+                      onClick={() => handleMarkAttendance(tutor.tutor._id, new Date(), true)}
+                      className={`px-3 py-1 rounded-lg ${
+                        tutor.attendance[format(new Date(), 'yyyy-MM-dd')] === true
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
                     >
-                      <FiCheck className="mr-2" /> Present
+                      Present
                     </button>
                     <button
-                      onClick={() => handleMarkAttendance(tutor.id, selectedDate, false)}
-                      className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center"
+                      onClick={() => handleMarkAttendance(tutor.tutor._id, new Date(), false)}
+                      className={`px-3 py-1 rounded-lg ${
+                        tutor.attendance[format(new Date(), 'yyyy-MM-dd')] === false
+                          ? 'bg-red-600 text-white'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
                     >
-                      <FiX className="mr-2" /> Absent
+                      Absent
                     </button>
                   </div>
                 </div>
               ))}
-            </div>
-
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => setShowAttendanceForm(false)}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
-              >
-                Done
-              </button>
             </div>
           </motion.div>
         </motion.div>
