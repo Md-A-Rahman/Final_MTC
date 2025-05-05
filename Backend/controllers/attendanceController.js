@@ -48,40 +48,49 @@ export const getAttendanceReport = async (req, res) => {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
-    // Build query
-    const query = {
+    // Get all tutors for the selected center (or all centers)
+    const tutorQuery = centerId ? { assignedCenter: centerId } : {};
+    const tutors = await Tutor.find(tutorQuery).populate('assignedCenter', 'name');
+
+    // Get all attendance records for the month
+    const attendanceQuery = {
       date: {
         $gte: startDate,
         $lte: endDate
       }
     };
-
     if (centerId) {
-      query.center = centerId;
+      attendanceQuery.center = centerId;
     }
-
-    // Get all attendance records for the month
-    const attendanceRecords = await Attendance.find(query)
+    const attendanceRecords = await Attendance.find(attendanceQuery)
       .populate('tutor', 'name')
       .populate('center', 'name')
       .sort({ date: 1 });
 
-    // Group attendance by tutor
-    const tutorAttendance = {};
+    console.log('Attendance records for report:', attendanceRecords);
+
+    // Group attendance by tutorId and date
+    const attendanceMap = {};
     attendanceRecords.forEach(record => {
       const tutorId = record.tutor._id.toString();
-      if (!tutorAttendance[tutorId]) {
-        tutorAttendance[tutorId] = {
-          tutor: record.tutor,
-          center: record.center,
-          attendance: {}
-        };
-      }
-      tutorAttendance[tutorId].attendance[format(record.date, 'yyyy-MM-dd')] = record.status === 'present';
+      if (!attendanceMap[tutorId]) attendanceMap[tutorId] = {};
+      attendanceMap[tutorId][format(record.date, 'yyyy-MM-dd')] = record.status === 'present';
     });
 
-    // Convert to array format
-    const report = Object.values(tutorAttendance);
+    // Build report for all tutors
+    const report = tutors.map(tutor => {
+      const attendance = attendanceMap[tutor._id.toString()] || {};
+      // Use assignedCenter for the center name
+      let center = { name: 'N/A' };
+      if (tutor.assignedCenter && tutor.assignedCenter.name) {
+        center = { _id: tutor.assignedCenter._id, name: tutor.assignedCenter.name };
+      }
+      return {
+        tutor: { _id: tutor._id, name: tutor.name },
+        center,
+        attendance
+      };
+    });
 
     res.status(200).json(report);
   } catch (error) {
