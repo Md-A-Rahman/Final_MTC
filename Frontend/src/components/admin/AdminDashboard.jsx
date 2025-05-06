@@ -7,6 +7,7 @@ import Overview from './Overview';
 import TutorManagement from './TutorManagement';
 import CenterManagement from './CenterManagement';
 import Reports from './Reports';
+import Students from './Students';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -34,6 +35,8 @@ const AdminDashboard = () => {
         return <CenterManagement />;
       case 'reports':
         return <Reports />;
+      case 'students':
+        return <Students />;
       default:
         return <Overview />;
     }

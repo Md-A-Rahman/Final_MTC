@@ -8,8 +8,8 @@ const Logo = ({ useLink = true }) => {
         alt="Logo" 
         className="h-20 w-auto mr-6" 
       />
-      <span className="text-xl font-poppins font-bold text-black">
-        <span className="text-accent-600">Mohalla</span> Tuition Center Program
+      <span className="text-xl font-poppins font-bold text-black drop-shadow-lg">
+        <span className="text-accent-600 drop-shadow-md">Mohalla</span> Tuition Center Program
       </span>
     </>
   );

@@ -279,7 +279,13 @@ const CenterManagement = () => {
     }
   };
 
-  if (loading) return <p>Loading centers...</p>;
+  if (loading) {
+    return (
+    <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <span className="ml-3 text-gray-600">Loading Centers...</span>
+    </div>
+  );}
   if (error) return <p>Error loading centers: {error}</p>;
   if (!centers) return <p>No centers found.</p>;
 

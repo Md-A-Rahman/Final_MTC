@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { FiLogOut } from 'react-icons/fi'
+import { FiLogOut, FiUsers } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 
 const Sidebar = ({ activeTab, setActiveTab, tabs }) => {
@@ -9,6 +9,16 @@ const Sidebar = ({ activeTab, setActiveTab, tabs }) => {
     localStorage.removeItem('userRole');
     navigate('/admin');
   }
+
+  const allTabs = [
+    ...tabs,
+    {
+      id: 'students',
+      label: 'Students',
+      icon: <FiUsers size={20} />
+    }
+  ]
+
   return (
     <aside className="w-64 bg-white shadow-xl fixed h-screen bg-gradient-to-b from-white to-blue-50">
       <div className="p-6 border-b border-blue-100">
@@ -18,7 +28,7 @@ const Sidebar = ({ activeTab, setActiveTab, tabs }) => {
       </div>
       
       <nav className="mt-6">
-        {tabs.map((tab) => (
+        {allTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}

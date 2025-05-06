@@ -221,12 +221,12 @@ const CallToAction = () => {
               <FiHeart size={28} />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">Volunteer With Us</h3>
-            <p className="text-gray-600 mb-8">Help with organizing events, administrative tasks, or providing specialized skills.</p>
+            <p className="text-gray-600 mb-8">Help with organizing events, administrative tasks, or providing specialized skills to students.</p>
             <a 
               href="https://thequranfoundation.org/become-a-volunteer/" 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="btn bg-secondary-600 hover:bg-secondary-700 text-white w-full block"
+              className="btn bg-primary-600 hover:bg-primary-700 text-white w-full block"
             >
               Volunteer Now
             </a>
@@ -247,7 +247,7 @@ const CallToAction = () => {
               href="https://thequranfoundation.org/donation/" 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="btn bg-secondary-600 hover:bg-secondary-700 text-white w-full block"
+              className="btn bg-primary-600 hover:bg-primary-700 text-white w-full block"
             >
               Make a Donation
             </a>
