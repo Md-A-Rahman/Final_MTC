@@ -40,11 +40,23 @@ export const createTutorApplication = async (req, res) => {
       attachments
     };
 
-    await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Application sent to admins via email!' });
-  } catch (error) {
-    console.error('EMAIL ERROR:', error);
-    res.status(500).json({ message: 'Failed to send application', error: error.message });
+    // Send response to frontend immediately
+    res.status(200).json({ message: 'Application received and will be processed. Admins will be notified.' });
+
+    // Proceed to send email in the background
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log('Tutor application email sent to admins.');
+    } catch (emailError) {
+      // Log email error, but don't send another response to client as one has already been sent
+      console.error('Failed to send tutor application email to admins:', emailError);
+    }
+  } catch (error) { // Catch errors from initial setup (e.g., Admin.find)
+    console.error('Failed to process tutor application:', error);
+    // If a response hasn't been sent yet (e.g., error before res.json), send an error response.
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Failed to process application', error: error.message });
+    }
   }
 };
 

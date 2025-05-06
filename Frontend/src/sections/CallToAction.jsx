@@ -57,8 +57,8 @@ const CallToAction = () => {
     setSubmitStatus('')
     
     // Custom validation for file inputs
-    if (!formData.certificates || !formData.memos || !formData.resume) {
-      setSubmitStatus('Please upload all required documents.')
+    if (!formData.resume) {
+      setSubmitStatus('Please upload your resume.')
       return
     }
 
@@ -83,23 +83,9 @@ const CallToAction = () => {
         throw new Error('Failed to submit application')
       }
 
-      // Send notification emails to all admins
-      await fetch('http://localhost:5000/api/notify-admins', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          subject: 'New Tutor Application',
-          messageType: 'tutor_application',
-          applicantName: formData.fullName,
-          applicantEmail: formData.email,
-          applicantPhone: formData.phone,
-          qualifications: formData.qualifications
-        })
-      })
+      setSubmitStatus('Application submitted successfully!') // Backend handles admin notification
 
-      setSubmitStatus('Application submitted successfully!')
+      // Clear form data after successful primary submission and message set
       setFormData({
         fullName: '',
         email: '',
@@ -113,7 +99,7 @@ const CallToAction = () => {
       // Close modal after successful submission
       setTimeout(() => {
         setShowTutorModal(false)
-        setSubmitStatus('')
+        setSubmitStatus('') // Clear status after modal closes
       }, 3000)
     } catch (error) {
       setSubmitStatus('Error submitting application. Please try again.')
@@ -139,23 +125,9 @@ const CallToAction = () => {
         throw new Error('Failed to submit contact form')
       }
 
-      // Send notification emails to all admins
-      await fetch('http://localhost:5000/api/notify-admins', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          subject: `New Contact Form: ${contactFormData.subject}`,
-          messageType: 'contact_form',
-          contactName: contactFormData.name,
-          contactEmail: contactFormData.email,
-          contactSubject: contactFormData.subject,
-          contactMessage: contactFormData.message
-        })
-      })
+      setContactSubmitStatus('Message sent successfully!') // Backend handles admin notification
 
-      setContactSubmitStatus('Message sent successfully!')
+      // Clear form data after successful primary submission and message set
       setContactFormData({
         name: '',
         email: '',
@@ -270,21 +242,21 @@ const CallToAction = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name <span className="text-red-500">*</span> (Required)</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><FiUser size={18} /></div>
                       <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" required />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span> (Required)</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><FiMail size={18} /></div>
                       <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" required />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number <span className="text-red-500">*</span> (Required)</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><FiPhone size={18} /></div>
                       <input type="tel" name="phone" value={formData.phone} onChange={handleChange} pattern="[0-9]{10}" className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" required />
@@ -294,7 +266,7 @@ const CallToAction = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Qualifications</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Qualifications <span className="text-red-500">*</span> (Required)</label>
                     <textarea name="qualifications" value={formData.qualifications} onChange={handleChange} rows="3" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" required />
                   </div>
                 </div>
@@ -302,9 +274,9 @@ const CallToAction = () => {
                   <h3 className="text-lg font-medium text-gray-900">Required Documents</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Certificates</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Certificates (Optional)</label>
                       <div className="relative">
-                        <input type="file" name="certificates" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="certificates" required />
+                        <input type="file" name="certificates" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="certificates" />
                         <label htmlFor="certificates" className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                           <FiUpload className="mr-2" />
                           <span className="text-sm">Upload Certificates</span>
@@ -313,9 +285,9 @@ const CallToAction = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Memos</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Memos (Optional)</label>
                       <div className="relative">
-                        <input type="file" name="memos" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="memos" required />
+                        <input type="file" name="memos" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="memos" />
                         <label htmlFor="memos" className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                           <FiUpload className="mr-2" />
                           <span className="text-sm">Upload Memos</span>
@@ -324,7 +296,7 @@ const CallToAction = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Resume</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Resume <span className="text-red-500">*</span> (Required)</label>
                       <div className="relative">
                         <input type="file" name="resume" onChange={handleChange} accept=".pdf,.doc,.docx" className="hidden" id="resume" required />
                         <label htmlFor="resume" className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
