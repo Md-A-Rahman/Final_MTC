@@ -705,9 +705,9 @@ const CenterManagement = () => {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl"
+              className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
             >
-              <div className="flex justify-between items-start mb-6">
+              <div className="flex justify-between items-start p-6 border-b">
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Center Details
                 </h2>
@@ -719,55 +719,81 @@ const CenterManagement = () => {
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Center Name</p>
-                    <p className="font-medium">{showDetails.name}</p>
+              <div className="overflow-y-auto p-6 space-y-6">
+                <div className="flex items-center">
+                  <div className="h-16 w-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-xl font-medium">
+                    {showDetails.name.charAt(0)}
                   </div>
-                  <div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-bold text-gray-900">{showDetails.name}</h3>
+                    <p className="text-sm text-gray-500">{showDetails.area}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500">Location</p>
                     <p className="font-medium">{showDetails.location}</p>
                   </div>
-                  <div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500">Area</p>
                     <p className="font-medium">{showDetails.area}</p>
                   </div>
-                  <div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500">Sadar Name</p>
                     <p className="font-medium">{showDetails.sadarName}</p>
                   </div>
-                  <div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500">Sadar Contact</p>
                     <p className="font-medium">{showDetails.sadarContact}</p>
                   </div>
-                  <div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500">Coordinates</p>
                     <p className="font-medium">{showDetails.coordinates?.join(', ') || 'N/A'}</p>
                   </div>
-                  <div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500">Number of Tutors</p>
                     <p className="font-medium">{showDetails.tutors?.length || 0}</p>
                   </div>
-                  <div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-500">Number of Students</p>
                     <p className="font-medium">{showDetails.students?.length || 0}</p>
                   </div>
                 </div>
 
                 {showDetails.coordinates && (
-                  <div className="h-[200px] rounded-lg overflow-hidden border border-gray-300 mt-4">
-                    <MapContainer
-                      center={showDetails.coordinates}
-                      zoom={13}
-                      style={{ height: '100%', width: '100%' }}
-                    >
-                      <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      />
-                      <Marker position={showDetails.coordinates} />
-                    </MapContainer>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-2">Location Map</p>
+                    <div className="h-[200px] rounded-lg overflow-hidden border border-gray-300">
+                      <MapContainer
+                        center={showDetails.coordinates}
+                        zoom={13}
+                        style={{ height: '100%', width: '100%' }}
+                      >
+                        <TileLayer
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        />
+                        <Marker position={showDetails.coordinates} />
+                      </MapContainer>
+                    </div>
+                  </div>
+                )}
+
+                {showDetails.images && showDetails.images.length > 0 && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-2">Center Images</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {showDetails.images.map((image, index) => (
+                        <div key={index} className="relative aspect-square">
+                          <img
+                            src={image.url}
+                            alt={`Center image ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

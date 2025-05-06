@@ -864,12 +864,15 @@ const TutorStudents = () => {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl"
+              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-start mb-6">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-accent-600 to-primary-600 bg-clip-text text-transparent">
-                  Student Details
-                </h2>
+                <div>
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-accent-600 to-primary-600 bg-clip-text text-transparent">
+                    Student Details
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">ID: {showDetails._id}</p>
+                </div>
                 <button
                   onClick={() => setShowDetails(null)}
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -877,81 +880,139 @@ const TutorStudents = () => {
                   <FiX size={20} />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Name</p>
-                  <p className="font-medium">{showDetails.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Father's Name</p>
-                  <p className="font-medium">{showDetails.fatherName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Contact</p>
-                  <p className="font-medium">{showDetails.contact}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Class</p>
-                  <p className="font-medium">{showDetails.schoolInfo?.class || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">School</p>
-                  <p className="font-medium">{showDetails.schoolInfo?.name || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Gender</p>
-                  <p className="font-medium">{showDetails.gender}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Medium</p>
-                  <p className="font-medium">{showDetails.medium}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Aadhar Number</p>
-                  <p className="font-medium">{showDetails.aadharNumber}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Joining Date</p>
-                  <p className="font-medium">{showDetails.joiningDate ? format(new Date(showDetails.joiningDate), 'dd/MM/yyyy') : ''}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Assigned Tutor</p>
-                  <p className="font-medium">{showDetails.assignedTutor && showDetails.assignedTutor.name ? showDetails.assignedTutor.name : showDetails.assignedTutor}</p>
+
+              {/* Personal Information Section */}
+              <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div>
+                    <p className="text-sm text-gray-500">Name</p>
+                    <p className="font-medium text-gray-900">{showDetails.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Father's Name</p>
+                    <p className="font-medium text-gray-900">{showDetails.fatherName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Contact</p>
+                    <p className="font-medium text-gray-900">{showDetails.contact}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Gender</p>
+                    <p className="font-medium text-gray-900">{showDetails.gender}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Medium</p>
+                    <p className="font-medium text-gray-900">{showDetails.medium}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Aadhar Number</p>
+                    <p className="font-medium text-gray-900">{showDetails.aadharNumber}</p>
+                  </div>
                 </div>
               </div>
-              <div className="mt-6">
-                <p className="text-sm text-gray-500">Remarks</p>
-                <p className="font-medium">{showDetails.remarks}</p>
+
+              {/* School Information Section */}
+              <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">School Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-sm text-gray-500">School Name</p>
+                    <p className="font-medium text-gray-900">{showDetails.schoolInfo?.name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Class</p>
+                    <p className="font-medium text-gray-900">{showDetails.schoolInfo?.class || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Non-School Going</p>
+                    <p className="font-medium text-gray-900">{showDetails.isNonSchoolGoing ? 'Yes' : 'No'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Joining Date</p>
+                    <p className="font-medium text-gray-900">
+                      {showDetails.joiningDate ? format(new Date(showDetails.joiningDate), 'dd/MM/yyyy') : '-'}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="mt-6">
-                <h3 className="font-semibold text-gray-900 mb-2">Attendance History</h3>
-                <div className="space-y-2">
-                  {showDetails.attendance && Object.entries(showDetails.attendance).map(([month, data]) => (
-                    <div key={month} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                      <span className="font-medium">{format(new Date(month), 'MMMM yyyy')}</span>
-                      <span className={`font-medium ${
-                        (data.presentDays / data.totalDays) * 100 >= 75
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}>
-                        {data.presentDays}/{data.totalDays} days
-                      </span>
+
+              {/* Guardian Information Section (if orphan) */}
+              {showDetails.isOrphan && (
+                <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Guardian Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm text-gray-500">Guardian Name</p>
+                      <p className="font-medium text-gray-900">{showDetails.guardianInfo?.name || '-'}</p>
                     </div>
-                  ))}
+                    <div>
+                      <p className="text-sm text-gray-500">Guardian Contact</p>
+                      <p className="font-medium text-gray-900">{showDetails.guardianInfo?.contact || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attendance History Section */}
+              <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Attendance History</h3>
+                </div>
+                <div className="space-y-3">
+                  {showDetails.attendance && showDetails.attendance.length > 0 ? (
+                    showDetails.attendance.map((record, index) => (
+                      <div key={index} className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm">
+                        <div className="flex items-center">
+                          <FiCalendar className="text-gray-400 mr-3" />
+                          <span className="font-medium text-gray-900">
+                            {format(new Date(record.month), 'MMMM yyyy')}
+                          </span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className={`font-medium ${
+                            (record.presentDays / record.totalDays) * 100 >= 75
+                              ? 'text-green-600'
+                              : 'text-red-600'
+                          }`}>
+                            {record.presentDays}/{record.totalDays} days
+                          </span>
+                          <span className="ml-3 text-sm text-gray-500">
+                            ({Math.round((record.presentDays / record.totalDays) * 100)}%)
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      No attendance records found
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="flex justify-end mt-6 space-x-4">
+
+              {/* Remarks Section */}
+              {showDetails.remarks && (
+                <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Remarks</h3>
+                  <p className="text-gray-700">{showDetails.remarks}</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-4 mt-6">
                 <button
                   onClick={() => handleEditStudent(showDetails)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center"
                 >
-                  Edit
+                  <FiEdit2 className="mr-2" /> Edit
                 </button>
                 <button
                   onClick={() => handleDeleteStudent(showDetails._id)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 flex items-center"
                   disabled={isDeleting}
                 >
+                  <FiTrash2 className="mr-2" />
                   {isDeleting ? 'Deleting...' : 'Delete'}
                 </button>
                 <button

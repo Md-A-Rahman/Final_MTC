@@ -414,9 +414,9 @@ const TutorManagement = () => {
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
-        className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
       >
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex justify-between items-start p-6 border-b">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Tutor Profile
           </h2>
@@ -428,45 +428,45 @@ const TutorManagement = () => {
           </button>
         </div>
 
-        <div className="space-y-6">
+        <div className="overflow-y-auto p-6 space-y-6">
           <div className="flex items-center">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-2xl font-medium">
+            <div className="h-16 w-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-xl font-medium">
               {tutor.name.charAt(0)}
             </div>
-            <div className="ml-6">
-              <h3 className="text-xl font-bold text-gray-900">{tutor.name}</h3>
-              <p className="text-gray-500">{tutor.qualifications || 'Qualifications pending'}</p>
+            <div className="ml-4">
+              <h3 className="text-lg font-bold text-gray-900">{tutor.name}</h3>
+              <p className="text-sm text-gray-500">{tutor.qualifications || 'Qualifications pending'}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Email</p>
               <p className="font-medium">{tutor.email}</p>
             </div>
-            <div>
+            <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Phone</p>
               <p className="font-medium">{tutor.phone}</p>
             </div>
-            <div>
+            <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Center</p>
               <p className="font-medium">{getCenterName(tutor)}</p>
             </div>
-            <div>
+            <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Join Date</p>
               <p className="font-medium">{new Date(tutor.createdAt).toLocaleDateString()}</p>
             </div>
-            <div>
+            <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Session Type</p>
               <p className="font-medium capitalize">{tutor.sessionType}</p>
             </div>
-            <div>
+            <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Session Timing</p>
               <p className="font-medium capitalize">{tutor.sessionTiming?.replace(/_/g, ' ')}</p>
             </div>
           </div>
 
-          <div>
+          <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-sm text-gray-500 mb-2">Subjects</p>
             <div className="flex flex-wrap gap-2">
               {tutor.subjects?.map((subject, index) => (
@@ -482,7 +482,7 @@ const TutorManagement = () => {
 
           <div className="border-t pt-4">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">Pending Information</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {!tutor.qualifications && (
                 <div className="bg-yellow-50 p-4 rounded-lg">
                   <p className="text-sm text-yellow-800">Qualifications not provided</p>
@@ -690,7 +690,7 @@ const TutorManagement = () => {
 
       <div className="bg-white rounded-xl shadow-lg p-6 space-y-4">
         <div className="flex flex-wrap gap-4">
-          <div className="flex-1">
+          <div className="flex-1 min-w-[200px]">
             <div className="relative">
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
@@ -702,7 +702,7 @@ const TutorManagement = () => {
               />
             </div>
           </div>
-          <div className="w-64">
+          <div className="w-64 min-w-[200px]">
             <div className="relative">
               <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <select
@@ -721,32 +721,98 @@ const TutorManagement = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="w-full">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tutor Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Contact
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Center & Subjects
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Session
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedTutors.map(renderTutorRow)}
+              {paginatedTutors.map((tutor) => (
+                <tr
+                  key={tutor._id}
+                  className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => !isLoading && setShowProfile(tutor)}
+                >
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-medium">
+                        {tutor.name.charAt(0)}
+                      </div>
+                      <div className="ml-3">
+                        <div className="text-sm font-medium text-gray-900">{tutor.name}</div>
+                        <div className="text-xs text-gray-500">{tutor.qualifications || 'Qualifications pending'}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{tutor.email}</div>
+                    <div className="text-xs text-gray-500">{tutor.phone}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-sm text-gray-900">{getCenterName(tutor)}</div>
+                    <div className="text-xs text-gray-500">
+                      {tutor.subjects?.slice(0, 2).join(', ')}
+                      {tutor.subjects?.length > 2 ? ` +${tutor.subjects.length - 2} more` : ''}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 capitalize">{tutor.sessionType}</div>
+                    <div className="text-xs text-gray-500 capitalize">{tutor.sessionTiming?.replace(/_/g, ' ')}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      tutor.status === 'active' ? 'bg-green-100 text-green-800' : 
+                      tutor.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {tutor.status || 'pending'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(tutor);
+                        }}
+                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                        disabled={isLoading}
+                      >
+                        <FiEdit2 size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(tutor);
+                        }}
+                        className="text-red-600 hover:text-red-800 transition-colors"
+                        disabled={isLoading || isDeleting}
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
