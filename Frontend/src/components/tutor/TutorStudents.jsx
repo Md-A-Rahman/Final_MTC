@@ -4,7 +4,6 @@ import { format } from 'date-fns'
 import DatePicker from 'react-datepicker'
 import { FiSearch, FiEdit2, FiTrash2, FiDownload, FiUserPlus, FiFilter, FiX, FiCheck, FiCalendar } from 'react-icons/fi'
 import Papa from 'papaparse'
-import { jsPDF } from 'jspdf'
 import useGet from '../CustomHooks/useGet'
 import { toast } from 'react-hot-toast'
 import "react-datepicker/dist/react-datepicker.css"
@@ -192,56 +191,75 @@ const TutorStudents = () => {
     }
   }
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF()
-    
-    doc.setFontSize(16)
-    doc.text('Students Report', 14, 15)
-    doc.setFontSize(12)
-    doc.text(`Generated on: ${format(new Date(), 'dd/MM/yyyy')}`, 14, 25)
-
-    const tableData = students.map(student => [
-      student.name,
-      student.fatherName,
-      student.class,
-      student.schoolName,
-      format(new Date(student.joiningDate), 'dd/MM/yyyy')
-    ])
-
-    doc.autoTable({
-      startY: 35,
-      head: [['Name', 'Father\'s Name', 'Class', 'School', 'Joining Date']],
-      body: tableData,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 }
-    })
-
-    doc.save('students_report.pdf')
-  }
-
   const handleExportCSV = () => {
-    const data = students.map(student => ({
-      'Name': student.name,
-      'Father\'s Name': student.fatherName,
-      'Contact': student.contact,
-      'Class': student.class,
-      'School': student.schoolName,
-      'Gender': student.gender,
-      'Medium': student.medium,
-      'Joining Date': student.joiningDate
-    }))
+    // First, collect all unique months from all students' attendance records
+    const allMonths = new Set();
+    students.forEach(student => {
+      if (student.attendance && student.attendance.length > 0) {
+        student.attendance.forEach(record => {
+          const month = format(new Date(record.month), 'MMMM yyyy');
+          allMonths.add(month);
+        });
+      }
+    });
 
-    const csv = Papa.unparse(data)
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', 'students_data.csv')
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // Sort months chronologically
+    const sortedMonths = Array.from(allMonths).sort((a, b) => {
+      return new Date(a) - new Date(b);
+    });
+
+    // Prepare the data for CSV export with all details
+    const csvData = students.map(student => {
+      // Create base student data
+      const studentData = {
+        'Student Name': student.name,
+        'Father\'s Name': student.fatherName,
+        'Contact Number': student.contact,
+        'Gender': student.gender,
+        'Medium': student.medium,
+        'Aadhar Number': student.aadharNumber,
+        'Orphan Status': student.isOrphan ? 'Yes' : 'No',
+        'Guardian Name': student.guardianInfo?.name || '',
+        'Guardian Contact': student.guardianInfo?.contact || '',
+        'School Going Status': student.isNonSchoolGoing ? 'Non-School Going' : 'School Going',
+        'School Name': student.schoolInfo?.name || '',
+        'Class': student.schoolInfo?.class || '',
+        'Joining Date': student.joiningDate ? format(new Date(student.joiningDate), 'dd/MM/yyyy') : '',
+        'Remarks': student.remarks || ''
+      };
+
+      // Create a map of attendance records for easy lookup
+      const attendanceMap = new Map();
+      if (student.attendance && student.attendance.length > 0) {
+        student.attendance.forEach(record => {
+          const month = format(new Date(record.month), 'MMMM yyyy');
+          attendanceMap.set(month, `${record.presentDays}/${record.totalDays}`);
+        });
+      }
+
+      // Add attendance data for all months
+      sortedMonths.forEach(month => {
+        studentData[month] = attendanceMap.get(month) || '-';
+      });
+
+      return studentData;
+    });
+
+    // Convert to CSV
+    const csv = Papa.unparse(csvData);
+
+    // Create a blob and download link
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `students_data_with_attendance_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   const handleMarkAttendance = (student) => {
@@ -451,12 +469,6 @@ const TutorStudents = () => {
             className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
           >
             <FiUserPlus className="mr-2" /> Add Student
-          </button>
-          <button
-            onClick={handleExportPDF}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
-          >
-            <FiDownload className="mr-2" /> Export PDF
           </button>
           <button
             onClick={handleExportCSV}
