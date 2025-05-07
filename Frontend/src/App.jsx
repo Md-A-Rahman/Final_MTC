@@ -11,12 +11,20 @@ import { CenterRefetchProvider } from './context/CenterRefetchContext';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  const userRole = localStorage.getItem('userRole');
+  const userData = localStorage.getItem('userData');
   
-  if (!token || userRole !== 'admin') {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
+  if (!userData) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  try {
+    const parsedData = JSON.parse(userData);
+    if (!parsedData || !parsedData._id || parsedData.role !== 'admin') {
+      localStorage.removeItem('userData');
+      return <Navigate to="/admin" replace />;
+    }
+  } catch (error) {
+    localStorage.removeItem('userData');
     return <Navigate to="/admin" replace />;
   }
   

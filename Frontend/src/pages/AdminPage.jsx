@@ -22,44 +22,60 @@ const AdminPage = () => {
     role: 'admin'
   })
   const navigate = useNavigate()
+
   useEffect(() => {
     window.scrollTo(0, 0);
     
     // Check if already logged in
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    
-    if (token && userRole === 'admin') {
-      setIsLoggedIn(true);
-      navigate('/admin-dashboard');
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      try {
+        const parsedData = JSON.parse(userData);
+        if (parsedData && parsedData._id && parsedData.role === 'admin') {
+          setIsLoggedIn(true);
+          navigate('/admin-dashboard');
+        } else {
+          localStorage.removeItem('userData');
+        }
+      } catch (error) {
+        localStorage.removeItem('userData');
+      }
     }
   }, [navigate]);
   
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-  
+
     try {
-      const res = await fetch('http://localhost:5000/api/auth/admin/login', {
+      const response = await fetch('http://localhost:5000/api/auth/admin/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: username, password })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: username,
+          password: password
+        }),
       });
-  
-      const data = await res.json();
-  
-      if (!res.ok) {
-        throw new Error(data.message || 'Invalid credentials');
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem('userData', JSON.stringify({
+          _id: data._id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          token: data.token
+        }));
+        setIsLoggedIn(true);
+        navigate('/admin-dashboard');
+      } else {
+        setError(data.message || 'Login failed');
       }
-  
-      // Store the token and role securely
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('userRole', data.role);
-      setIsLoggedIn(true);
-      navigate('/admin-dashboard');
     } catch (err) {
-      console.error('Login error:', err);
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError('An error occurred. Please try again.');
     }
   };
   

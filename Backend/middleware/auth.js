@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
 import Tutor from '../models/Tutor.js';
 
-const auth = async (req, res, next) => {
+export const auth = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
@@ -32,7 +32,6 @@ const auth = async (req, res, next) => {
 
 // Export both auth and protect (for backward compatibility)
 export const protect = auth;
-export default auth;
 
 export const adminOnly = (req, res, next) => {
   if (req.role !== 'admin') {

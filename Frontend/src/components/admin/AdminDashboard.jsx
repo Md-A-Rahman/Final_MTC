@@ -1,28 +1,45 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FiGrid, FiUsers, FiMapPin, FiFileText, FiLogOut } from 'react-icons/fi';
 import Sidebar from './Sidebar';
 import Overview from './Overview';
 import TutorManagement from './TutorManagement';
 import CenterManagement from './CenterManagement';
-import Reports from './Reports';
-import Students from './Students';
+import ReportManagement from './ReportManagement';
+import StudentManagement from './StudentManagement';
+import AdminManagement from './AdminManagement';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Redirect if not logged in
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    
-    if (!token || userRole !== 'admin') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userRole');
-      navigate('/admin');
-    }
+    const loadUserData = () => {
+      const userData = localStorage.getItem('userData');
+      if (!userData) {
+        navigate('/admin');
+        return;
+      }
+
+      try {
+        const parsedData = JSON.parse(userData);
+        if (!parsedData || !parsedData._id || !parsedData.token || parsedData.role !== 'admin') {
+          localStorage.removeItem('userData');
+          navigate('/admin');
+          return;
+        }
+        setUser(parsedData);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        localStorage.removeItem('userData');
+        navigate('/admin');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserData();
   }, [navigate]);
 
   const renderContent = () => {
@@ -34,39 +51,40 @@ const AdminDashboard = () => {
       case 'centers':
         return <CenterManagement />;
       case 'reports':
-        return <Reports />;
+        return <ReportManagement />;
       case 'students':
-        return <Students />;
+        return <StudentManagement />;
+      case 'admins':
+        return <AdminManagement />;
       default:
-        return <Overview />;
+        return (
+          <div className="p-6">
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">Welcome, {user?.name}</h1>
+            <p className="text-gray-600">Select a section from the sidebar to get started.</p>
+          </div>
+        );
     }
   };
 
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: <FiGrid /> },
-    { id: 'tutors', label: 'Tutors', icon: <FiUsers /> },
-    { id: 'centers', label: 'Centers', icon: <FiMapPin /> },
-    { id: 'reports', label: 'Reports', icon: <FiFileText /> }
-  ];
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <span className="ml-3 text-gray-600">Loading...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      <div className="flex">
-        {/* Sidebar */}
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} />
-
-        {/* Main Content */}
-        <main className="flex-1 ml-64 p-8">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            className="mt-6"
-          >
-            {renderContent()}
-          </motion.div>
-        </main>
-      </div>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <main className="flex-1 overflow-y-auto">
+        {renderContent()}
+      </main>
     </div>
   );
 };
