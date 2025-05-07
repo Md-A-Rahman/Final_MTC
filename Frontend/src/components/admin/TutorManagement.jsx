@@ -119,6 +119,14 @@ const TutorManagement = () => {
         return;
       }
 
+      // If password is provided, validate its length
+      if (formData.password && formData.password !== 'tutor@123' && formData.password.length < 6) {
+        setError('Password must be at least 6 characters long');
+        setShowErrorAlert(true);
+        setIsSubmitting(false);
+        return;
+      }
+
       // Get the selected center
       const selectedCenter = centers?.find(c => c._id === formData.assignedCenter);
       if (!selectedCenter) {
@@ -134,7 +142,6 @@ const TutorManagement = () => {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         assignedCenter: selectedCenter._id,
-        centerName: selectedCenter.name,
         subjects: formData.subjects,
         sessionType: formData.sessionType,
         sessionTiming: formData.sessionTiming,
@@ -142,11 +149,40 @@ const TutorManagement = () => {
         assignedHadiyaAmount: formData.assignedHadiyaAmount ? parseFloat(formData.assignedHadiyaAmount) : 0
       };
 
-      // Always include password for new tutors, or if it's been changed for existing tutors
-      if (!editingTutor) {
+      // Only include password if it's being changed
+      if (formData.password && formData.password !== 'tutor@123') {
+        // Validate password length
+        if (formData.password.length < 6) {
+          setError('Password must be at least 6 characters long');
+          setShowErrorAlert(true);
+          setIsSubmitting(false);
+          return;
+        }
         formattedData.password = formData.password;
-      } else if (formData.password && formData.password !== 'tutor@123') {
-        formattedData.password = formData.password;
+      } else {
+        // If password is not being changed, don't include it in the request
+        delete formattedData.password;
+      }
+
+      // Check if all required information is complete
+      const isInformationComplete = Boolean(
+        formData.name &&
+        formData.email &&
+        formData.phone &&
+        formData.assignedCenter &&
+        formData.subjects &&
+        formData.subjects.length > 0 &&
+        formData.sessionType &&
+        formData.sessionTiming
+      );
+
+      // Show status based on information completeness
+      if (isInformationComplete) {
+        setEditingTutor({ ...editingTutor, status: 'active' });
+        setFormData({ ...formData, status: 'active' });
+      } else {
+        setEditingTutor({ ...editingTutor, status: 'pending' });
+        setFormData({ ...formData, status: 'pending' });
       }
 
       const userDataString = localStorage.getItem('userData');
@@ -166,76 +202,78 @@ const TutorManagement = () => {
         ? `http://localhost:5000/api/tutors/${editingTutor._id}`
         : 'http://localhost:5000/api/tutors';
 
-      const response = await fetch(url, {
-        method: editingTutor ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(formattedData)
-      });
+      try {
+        const response = await fetch(url, {
+          method: editingTutor ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify(formattedData)
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Your session has expired. Please login again.');
+        if (!response.ok) {
+          // Handle different error cases
+          if (response.status === 401) {
+            setError('Your session has expired. Please login again.');
+            setShowErrorAlert(true);
+            setIsSubmitting(false);
+            // Redirect to login page after a short delay
+            setTimeout(() => {
+              window.location.href = '/admin';
+            }, 2000);
+            return;
+          }
+
+          if (response.status === 400) {
+            if (data.message) {
+              setError(data.message);
+            } else if (data.errors && data.errors.length > 0) {
+              setError(data.errors.map(error => error.msg).join(', '));
+            } else {
+              setError('Failed to update tutor. Please check your input and try again.');
+            }
+            setShowErrorAlert(true);
+            setIsSubmitting(false);
+            return;
+          }
+
+          if (data.message?.includes('already exists')) {
+            setError('A tutor with this phone number already exists. Please use a different phone number.');
+            setShowErrorAlert(true);
+            setShowForm(false);
+            setIsSubmitting(false);
+            return;
+          }
+
+          // Default error message for other cases
+          setError('Failed to update tutor. Please check your input and try again.');
           setShowErrorAlert(true);
           setIsSubmitting(false);
-          // Redirect to login page after a short delay
-          setTimeout(() => {
-            window.location.href = '/admin';
-          }, 2000);
           return;
         }
-        if (data.message?.includes('already exists')) {
-          setError('A tutor with this phone number already exists. Please use a different phone number.');
-          setShowErrorAlert(true);
-          setShowForm(false);
-          setIsSubmitting(false);
-          return;
-        }
-        if (data.errors && data.errors.length > 0) {
-          setError(data.errors.map(error => error.msg).join(', '));
-          setShowErrorAlert(true);
-          setShowForm(false);
-          setIsSubmitting(false);
-          return;
-        }
-        setError(data.message || 'Invalid data');
-        setShowErrorAlert(true);
+
+        // Success case
         setShowForm(false);
+        setEditingTutor(null);
+        resetForm();
+        // Refresh tutors list
+        setRefreshKey(prev => prev + 1);
+        toast.success('Tutor updated successfully');
+      } catch (error) {
+        console.error('Error updating tutor:', error);
+        setError('An error occurred. Please check your internet connection and try again.');
+        setShowErrorAlert(true);
         setIsSubmitting(false);
-        return;
-      }
-
-      toast.success(editingTutor ? 'Tutor updated successfully!' : 'Tutor created successfully!', {
-        duration: 3000,
-        style: {
-          background: '#10b981',
-          color: '#fff',
-          padding: '16px',
-          borderRadius: '8px',
-          fontSize: '16px',
-          fontWeight: 'bold'
-        }
-      });
-      setShowForm(false);
-      setEditingTutor(null);
-      resetForm();
-      setRefreshKey(prev => prev + 1);
-      // Trigger center refetch for instant update
-      if (refetchCenterContext && refetchCenterContext.current) {
-        refetchCenterContext.current();
       }
     } catch (error) {
-      console.error('Error saving tutor:', error);
-      setError(error.message || 'Failed to save tutor');
+      console.error('Error updating tutor:', error);
+      setError('An error occurred. Please check your internet connection and try again.');
       setShowErrorAlert(true);
-      setShowForm(false);
-    } finally {
       setIsSubmitting(false);
     }
   };

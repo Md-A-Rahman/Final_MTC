@@ -135,11 +135,25 @@ export const updateTutor = async (req, res) => {
       return res.status(404).json({ message: 'Tutor not found' });
     }
 
-    // If updating password, hash it
+    // Only handle password if it's provided in the request
     if (req.body.password) {
-      // Always hash the password when updating
-      const salt = await bcrypt.genSalt(10);
-      req.body.password = await bcrypt.hash(req.body.password, salt);
+      try {
+        // Validate password length
+        if (req.body.password.length < 6) {
+          return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+        }
+
+        // Hash the password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(req.body.password, salt);
+        updateData.password = hashedPassword;
+      } catch (error) {
+        console.error('Error handling password:', error);
+        return res.status(400).json({ message: 'Failed to update password' });
+      }
+    } else {
+      // If no password is provided, don't include it in the update
+      delete updateData.password;
     }
 
     // If center is being changed
@@ -160,30 +174,68 @@ export const updateTutor = async (req, res) => {
       await newCenter.save();
     }
 
-    // Prepare update data
-    const updateData = {
-      name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone,
-      assignedCenter: req.body.assignedCenter,
-      subjects: req.body.subjects,
-      sessionType: req.body.sessionType,
-      sessionTiming: req.body.sessionTiming,
-      assignmentInformation: req.body.assignmentInformation || tutor.assignmentInformation
-    };
+    // Prepare update data - only include fields that are being updated
+    const updateData = {};
+    
+    // Only update fields that are provided in the request
+    if (req.body.name) updateData.name = req.body.name;
+    if (req.body.email) updateData.email = req.body.email;
+    if (req.body.phone) updateData.phone = req.body.phone;
+    if (req.body.assignedCenter) updateData.assignedCenter = req.body.assignedCenter;
+    if (req.body.subjects) updateData.subjects = req.body.subjects;
+    if (req.body.sessionType) updateData.sessionType = req.body.sessionType;
+    if (req.body.sessionTiming) updateData.sessionTiming = req.body.sessionTiming;
+    if (req.body.assignmentInformation) updateData.assignmentInformation = req.body.assignmentInformation;
 
-    // Always include password in update if it was provided
-    if (req.body.password) {
-      updateData.password = req.body.password;
+    // Check if all required information is complete
+    const isInformationComplete = Boolean(
+      req.body.name &&
+      req.body.email &&
+      req.body.phone &&
+      req.body.assignedCenter &&
+      req.body.subjects &&
+      req.body.subjects.length > 0 &&
+      req.body.sessionType &&
+      req.body.sessionTiming
+    );
+
+    // Update status based on information completeness
+    if (isInformationComplete) {
+      updateData.status = 'active';
+    } else {
+      updateData.status = 'pending';
     }
 
-    const updatedTutor = await Tutor.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    )
-      .select('-password')
-      .populate('assignedCenter', 'name location');
+
+    try {
+      // Update the tutor document
+      const updatedTutor = await Tutor.findByIdAndUpdate(
+        req.params.id,
+        updateData,
+        { new: true, runValidators: false, context: 'query' }
+      )
+        .select('-password')
+        .populate('assignedCenter', 'name location');
+
+      // Log the status update for debugging
+      console.log(`Tutor status updated to: ${updatedTutor.status}`);
+
+      // Add centerName to the response
+      const tutorResponse = updatedTutor.toObject();
+      tutorResponse.centerName = tutorResponse.assignedCenter?.name || "Unknown Center";
+
+      if (!updatedTutor) {
+        return res.status(404).json({ message: 'Tutor not found' });
+      }
+
+      res.json(tutorResponse);
+    } catch (error) {
+      if (error.code === 11000) {
+        return res.status(400).json({ message: 'A tutor with this phone number already exists' });
+      }
+      console.error('Error updating tutor:', error);
+      res.status(500).json({ message: 'Failed to update tutor', error: error.message });
+    }
 
     // Add centerName to the response
     const tutorResponse = updatedTutor.toObject();

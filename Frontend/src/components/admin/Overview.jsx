@@ -55,6 +55,57 @@ const Overview = () => {
     })
   }
 
+  const isLoading = tutorsLoading || centersLoading || appsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>
+        
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {[1, 2, 3].map((i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gray-100 rounded-lg p-6 animate-pulse"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm h-4 w-24 bg-gray-200 rounded"></p>
+                  <p className="text-2xl font-bold mt-1 h-6 w-20 bg-gray-200 rounded"></p>
+                </div>
+                <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-gray-100 rounded-lg p-6 animate-pulse">
+          <h2 className="text-xl font-semibold mb-4 h-6 bg-gray-200 rounded"></h2>
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-5 h-5 bg-gray-200 rounded-full"></div>
+                  <div>
+                    <p className="font-medium h-4 w-24 bg-gray-200 rounded"></p>
+                    <p className="text-sm text-gray-600 mt-1 h-4 w-20 bg-gray-200 rounded"></p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>

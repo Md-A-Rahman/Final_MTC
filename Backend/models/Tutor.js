@@ -19,7 +19,7 @@ const tutorSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: true
+      required: function() { return this.isNew; }
     },
     qualifications: {
       type: String,
@@ -150,6 +150,15 @@ tutorSchema.pre('save', async function(next) {
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
+});
+
+// Validate password length when creating a new tutor
+tutorSchema.pre('save', function(next) {
+  if (this.isNew && this.password && this.password.length < 6) {
+    next(new Error('Password must be at least 6 characters long'));
+  } else {
+    next();
+  }
 });
 
 // Match password method
