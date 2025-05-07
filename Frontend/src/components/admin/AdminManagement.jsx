@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiDownload } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiPhone } from 'react-icons/fi';
 import useGet from '../../hooks/useGet';
 import { toast } from 'react-hot-toast';
 
@@ -21,23 +21,6 @@ const AdminManagement = () => {
 
   const { data: admins, loading, error: fetchError, refetch } = useGet('/admin');
 
-  // Export admins to CSV
-  const handleExportCSV = () => {
-    if (!admins || admins.length === 0) return;
-    const csvRows = [
-      ['Name', 'Email'],
-      ...admins.map(a => [a.name, a.email])
-    ];
-    const csvContent = csvRows.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'admins.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleEdit = (admin) => {
     setEditingAdmin(admin);
     setFormData({
@@ -54,46 +37,118 @@ const AdminManagement = () => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-    if (formData.password !== formData.confirmPassword) {
+    
+    // Validate password length before submitting
+    if (!editingAdmin && formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
+
+    // Only check password match if password is being changed
+    if (formData.password && formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setIsLoading(false);
       return;
     }
+
     try {
       const url = editingAdmin
         ? `${import.meta.env.VITE_API_URL}/admin/${editingAdmin._id}`
         : `${import.meta.env.VITE_API_URL}/auth/admin/register`;
+      
+      // Prepare request body
+      let requestBody = {};
+      
+      if (editingAdmin) {
+        // For updates, only include fields that have changed
+        if (formData.name !== editingAdmin.name) {
+          requestBody.name = formData.name;
+        }
+        if (formData.email !== editingAdmin.email) {
+          requestBody.email = formData.email;
+        }
+        if (formData.phone !== editingAdmin.phone) {
+          requestBody.phone = formData.phone;
+        }
+        if (formData.password) {
+          requestBody.password = formData.password;
+        }
+      } else {
+        // For new admin, include all required fields
+        requestBody = {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          password: formData.password
+        };
+      }
+
+      console.log('Sending request:', {
+        url,
+        method: editingAdmin ? 'PUT' : 'POST',
+        body: requestBody
+      });
+
       const response = await fetch(
         url,
         {
           method: editingAdmin ? 'PUT' : 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData'))?.token}`
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
-          body: JSON.stringify({
-            name: formData.name,
-            email: formData.email,
-            password: formData.password,
-            phone: formData.phone || '9999999999'
-          })
+          body: JSON.stringify(requestBody)
         }
       );
+
       const data = await response.json();
+      console.log('Response:', data);
+      
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to save admin');
+        // Handle validation errors
+        if (data.errors && Array.isArray(data.errors)) {
+          const errorMessage = data.errors.join(', ');
+          setError(errorMessage);
+          throw new Error(errorMessage);
+        }
+        if (data.message) {
+          setError(data.message);
+          throw new Error(data.message);
+        }
+        const errorMessage = 'Failed to save admin';
+        setError(errorMessage);
+        throw new Error(errorMessage);
       }
+
       toast.success(editingAdmin ? 'Admin updated successfully' : 'Admin created successfully');
       setShowForm(false);
       setEditingAdmin(null);
       setFormData({ name: '', email: '', password: '', confirmPassword: '', phone: '' });
       refetch();
     } catch (err) {
-      setError(err.message);
-      toast.error(err.message);
+      console.error('Error:', err);
+      const errorMessage = err.message || 'An error occurred while saving the admin';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Add password validation helper
+  const validatePassword = (password) => {
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters long';
+    }
+    return '';
+  };
+
+  // Add password change handler with validation
+  const handlePasswordChange = (e) => {
+    const password = e.target.value;
+    const error = validatePassword(password);
+    setError(error);
+    setFormData(prev => ({ ...prev, password }));
   };
 
   const handleDelete = async (adminId) => {
@@ -104,7 +159,7 @@ const AdminManagement = () => {
         {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData'))?.token}`
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         }
       );
@@ -137,12 +192,6 @@ const AdminManagement = () => {
         <h1 className="text-3xl font-bold text-primary-700">Admin Management</h1>
         <div className="flex gap-2">
           <button
-            onClick={handleExportCSV}
-            className="flex items-center bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-          >
-            <FiDownload className="mr-2" /> Export CSV
-          </button>
-          <button
             onClick={() => {
               setEditingAdmin(null);
               setFormData({ name: '', email: '', password: '', confirmPassword: '', phone: '' });
@@ -172,16 +221,17 @@ const AdminManagement = () => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Admin Name</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
-              <tr><td colSpan={3} className="text-center py-8">Loading...</td></tr>
+              <tr><td colSpan={4} className="text-center py-8">Loading...</td></tr>
             ) : fetchError ? (
-              <tr><td colSpan={3} className="text-center text-red-500 py-8">Error loading admins: {fetchError}</td></tr>
+              <tr><td colSpan={4} className="text-center text-red-500 py-8">Error loading admins: {fetchError}</td></tr>
             ) : paginatedAdmins.length === 0 ? (
-              <tr><td colSpan={3} className="text-center py-8 text-gray-500">No admins found.</td></tr>
+              <tr><td colSpan={4} className="text-center py-8 text-gray-500">No admins found.</td></tr>
             ) : paginatedAdmins.map((admin) => (
               <tr key={admin._id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -198,6 +248,12 @@ const AdminManagement = () => {
                   <div className="flex items-center text-sm text-gray-700">
                     <FiMail className="mr-2 text-primary-600" />
                     {admin.email}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center text-sm text-gray-700">
+                    <FiPhone className="mr-2 text-primary-600" />
+                    {admin.phone || 'Not provided'}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -268,7 +324,7 @@ const AdminManagement = () => {
                       value={formData.name}
                       onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      required
+                      required={!editingAdmin}
                     />
                   </div>
                   <div>
@@ -278,7 +334,19 @@ const AdminManagement = () => {
                       value={formData.email}
                       onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      required
+                      required={!editingAdmin}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Contact Number</label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      pattern="[0-9]{10}"
+                      placeholder="Enter 10-digit phone number"
+                      required={!editingAdmin}
                     />
                   </div>
                   <div>
@@ -288,24 +356,40 @@ const AdminManagement = () => {
                     <input
                       type="password"
                       value={formData.password}
-                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      onChange={handlePasswordChange}
+                      className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+                        error && error.includes('Password') ? 'border-red-500' : 'border-gray-300'
+                      }`}
                       required={!editingAdmin}
+                      minLength={6}
                     />
+                    {error && error.includes('Password') && (
+                      <p className="mt-1 text-sm text-red-600">{error}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      {editingAdmin ? 'Confirm New Password' : 'Confirm Password'}
+                    </label>
                     <input
                       type="password"
                       value={formData.confirmPassword}
                       onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+                        error && error.includes('match') ? 'border-red-500' : 'border-gray-300'
+                      }`}
                       required={!editingAdmin}
+                      minLength={6}
                     />
+                    {error && error.includes('match') && (
+                      <p className="mt-1 text-sm text-red-600">{error}</p>
+                    )}
                   </div>
                 </div>
-                {error && (
-                  <div className="mt-4 text-red-500 text-sm">{error}</div>
+                {error && !error.includes('Password') && !error.includes('match') && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
                 )}
                 <div className="mt-6 flex justify-end gap-3">
                   <button
