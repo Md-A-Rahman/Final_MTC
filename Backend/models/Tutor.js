@@ -89,6 +89,19 @@ const tutorSchema = mongoose.Schema(
       enum: ['active', 'inactive', 'pending'],
       default: 'pending'
     },
+    assignedHadiyaAmount: {
+      type: Number,
+      required: false, // Consider if this should be true if it's always set during tutor creation
+      default: 0
+    },
+    hadiyaRecords: [{
+      month: { type: Number, required: true }, // e.g., 1 for January, 12 for December
+      year: { type: Number, required: true },  // e.g., 2023
+      amountPaid: { type: Number, required: true },
+      datePaid: { type: Date, default: Date.now },
+      paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true }, // Assuming you have an Admin model
+      notes: { type: String, trim: true, default: '' }
+    }],
     attendance: [{
       date: {
         type: Date,

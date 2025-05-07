@@ -64,7 +64,8 @@ export const createTutor = async (req, res) => {
       subjects,
       sessionType,
       sessionTiming,
-      documents
+      documents,
+      assignedHadiyaAmount // Added
     } = req.body;
 
     // Check if tutor exists
@@ -99,7 +100,8 @@ export const createTutor = async (req, res) => {
       location: {
         type: 'Point',
         coordinates: [0, 0] // Default coordinates
-      }
+      },
+      assignedHadiyaAmount: assignedHadiyaAmount || 0 // Added, with a default if not provided
     });
 
     // Add tutor to center's tutors array
@@ -229,7 +231,6 @@ export const deleteTutor = async (req, res) => {
 export const getTutorAttendanceReport = async (req, res) => {
   try {
     const tutor = await Tutor.findById(req.params.id);
-    
     if (!tutor) {
       return res.status(404).json({ message: 'Tutor not found' });
     }
@@ -239,19 +240,59 @@ export const getTutorAttendanceReport = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to view this report' });
     }
 
-    // TODO: Implement actual attendance report logic
+    const { month, year } = req.query; // Expecting month (1-12) and year (YYYY)
+
+    let filteredAttendance = tutor.attendance;
+
+    if (month && year) {
+      const numericMonth = parseInt(month, 10);
+      const numericYear = parseInt(year, 10);
+
+      if (isNaN(numericMonth) || isNaN(numericYear) || numericMonth < 1 || numericMonth > 12) {
+        return res.status(400).json({ message: 'Invalid month or year format.' });
+      }
+
+      // Filter by year and month (getMonth() is 0-indexed)
+      filteredAttendance = tutor.attendance.filter(record => {
+        const recordDate = new Date(record.date);
+        return recordDate.getFullYear() === numericYear && recordDate.getMonth() === (numericMonth - 1);
+      });
+    }
+
+    const attendedSessions = filteredAttendance.filter(record => record.status === 'present').length;
+    
+    // Placeholder for totalSessions calculation. 
+    // For now, totalSessions will be the number of unique days within the filtered period where attendance was marked.
+    // This means percentage will be 100% if only 'present' is marked.
+    const uniqueMarkedDays = new Set(filteredAttendance.map(record => new Date(record.date).setHours(0,0,0,0))).size;
+    const totalSessionsForCalc = uniqueMarkedDays; // This needs to be replaced with actual expected workdays
+
+    const attendancePercentage = totalSessionsForCalc > 0 ? (attendedSessions / totalSessionsForCalc) * 100 : 0;
+
+    // TODO: Refine totalSessions based on business logic (e.g., expected workdays).
+    // TODO: Implement absentSessions calculation if 'absent' records are to be created or inferred.
+    // TODO: Structure monthlyBreakdown if needed (e.g., array of daily statuses).
+
     res.json({
       tutorId: tutor._id,
       name: tutor.name,
-      attendance: {
-        totalSessions: 0,
-        attendedSessions: 0,
-        attendancePercentage: 0,
-        monthlyBreakdown: []
-      }
+      filter: {
+        month: month ? parseInt(month, 10) : undefined,
+        year: year ? parseInt(year, 10) : undefined,
+      },
+      attendanceStats: {
+        totalExpectedSessions: totalSessionsForCalc, // Placeholder - update with actual logic
+        attendedSessions: attendedSessions,
+        absentSessions: totalSessionsForCalc - attendedSessions, // Placeholder - update with actual logic
+        attendancePercentage: parseFloat(attendancePercentage.toFixed(2)),
+        // monthlyBreakdown: [] // Example: [{ date: '2023-01-01', status: 'present' }, ...]
+      },
+      // rawFilteredData: filteredAttendance // Optional: for frontend to do more complex grouping/display
     });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error fetching tutor attendance report:', error);
+    res.status(500).json({ message: 'Error fetching attendance report', errorDetails: error.message });
   }
 };
 

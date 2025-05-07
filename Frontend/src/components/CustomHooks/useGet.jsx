@@ -6,7 +6,8 @@ const useGet = (endpoint) => {
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('token');
+    const userDataString = localStorage.getItem('userData');
+    const token = userDataString ? JSON.parse(userDataString).token : null;
 
     try {
       setLoading(true);

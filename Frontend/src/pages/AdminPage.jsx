@@ -182,15 +182,7 @@ const AdminPage = () => {
                 </motion.button>
               </form>
 
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => setShowSignup(true)}
-                  className="text-primary-600 hover:text-primary-700 font-medium flex items-center justify-center w-full"
-                >
-                  <FiUserPlus className="mr-2" />
-                  Request Admin Access
-                </button>
-              </div>
+
             </>
           ) : (
             <>

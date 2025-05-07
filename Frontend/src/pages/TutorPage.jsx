@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { FiPhone, FiLock, FiMapPin, FiRefreshCw, FiCheckCircle, FiEye, FiEyeOff } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +21,16 @@ const TutorPage = () => {
   const [attendanceStatus, setAttendanceStatus] = useState(null);
   const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
   const navigate = useNavigate();
+  const locationUpdateTimeoutRef = useRef(null); // Ref for the timeout ID
+
+  // Effect for cleaning up the timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (locationUpdateTimeoutRef.current) {
+        clearTimeout(locationUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
   const { post, loading } = usePost();
 
   useEffect(() => {
@@ -104,7 +114,9 @@ const TutorPage = () => {
     setIsSubmittingAttendance(true);
     try {
       const currentLocation = await getCurrentLocation();
-      const token = localStorage.getItem("token");
+      const userDataString = localStorage.getItem("userData");
+      const token = userDataString ? JSON.parse(userDataString).token : null;
+      if (!token) throw new Error('Authentication token not found');
       
       const result = await post("http://localhost:5000/api/tutors/attendance", {
         currentLocation,
@@ -142,10 +154,16 @@ const TutorPage = () => {
         setError("Server not responding or network error.");
         return;
       }
-      localStorage.setItem("token", result.data.token);
-      localStorage.setItem("user", JSON.stringify(result.data));
+      localStorage.setItem("userData", JSON.stringify(result.data));
       setIsLoggedIn(true);
-      setTimeout(() => sendLocationToBackend(result.data.token), 500);
+      
+      // Clear any existing timeout before setting a new one
+      if (locationUpdateTimeoutRef.current) {
+        clearTimeout(locationUpdateTimeoutRef.current);
+      }
+      // Call sendLocationToBackend with the token from result.data
+      locationUpdateTimeoutRef.current = setTimeout(() => sendLocationToBackend(result.data.token), 500);
+      
       navigate("/tutor-dashboard");
     } catch (err) {
       setError(err.message || "Network error or server not responding.");

@@ -90,7 +90,8 @@ const StudentManagement = () => {
         return;
       }
 
-      const token = localStorage.getItem('token');
+      const userDataString = localStorage.getItem('userData');
+      const token = userDataString ? JSON.parse(userDataString).token : null;
       if (!token) {
         setError('Please login to continue');
         setShowErrorAlert(true);
@@ -144,7 +145,8 @@ const StudentManagement = () => {
     
     setIsDeleting(true);
     try {
-      const token = localStorage.getItem('token');
+      const userDataString = localStorage.getItem('userData');
+      const token = userDataString ? JSON.parse(userDataString).token : null;
       if (!token) {
         setError('Please login to continue');
         setShowErrorAlert(true);
@@ -349,7 +351,7 @@ const StudentManagement = () => {
   const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {showErrorAlert && error && (
         <div className="bg-red-50 border-l-4 border-red-400 p-4">
           <div className="flex">

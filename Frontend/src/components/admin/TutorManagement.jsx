@@ -38,7 +38,8 @@ const TutorManagement = () => {
     assignedCenter: '',
     subjects: [],
     sessionType: '',
-    sessionTiming: ''
+    sessionTiming: '',
+    assignedHadiyaAmount: '' // Or 0
   })
 
   const subjects = [
@@ -64,7 +65,8 @@ const TutorManagement = () => {
       assignedCenter: tutor.assignedCenter?._id || tutor.assignedCenter,
       subjects: tutor.subjects || [],
       sessionType: tutor.sessionType,
-      sessionTiming: tutor.sessionTiming
+      sessionTiming: tutor.sessionTiming,
+      assignedHadiyaAmount: tutor.assignedHadiyaAmount || '' // Or || 0
     });
     setShowForm(true);
   };
@@ -89,7 +91,8 @@ const TutorManagement = () => {
       assignedCenter: '',
       subjects: [],
       sessionType: '',
-      sessionTiming: ''
+      sessionTiming: '',
+      assignedHadiyaAmount: '' // Or 0
     });
   };
 
@@ -135,7 +138,8 @@ const TutorManagement = () => {
         subjects: formData.subjects,
         sessionType: formData.sessionType,
         sessionTiming: formData.sessionTiming,
-        assignmentInformation: formData.assignmentInfo || ''
+        assignmentInformation: formData.assignmentInfo || '',
+        assignedHadiyaAmount: formData.assignedHadiyaAmount ? parseFloat(formData.assignedHadiyaAmount) : 0
       };
 
       // Always include password for new tutors, or if it's been changed for existing tutors
@@ -145,14 +149,15 @@ const TutorManagement = () => {
         formattedData.password = formData.password;
       }
 
-      const token = localStorage.getItem('token');
+      const userDataString = localStorage.getItem('userData');
+      const token = userDataString ? JSON.parse(userDataString).token : null;
       if (!token) {
         setError('Please login to continue');
         setShowErrorAlert(true);
         setIsSubmitting(false);
         // Redirect to login page after a short delay
         setTimeout(() => {
-          window.location.href = '/login';
+          window.location.href = '/admin';
         }, 2000);
         return;
       }
@@ -181,7 +186,7 @@ const TutorManagement = () => {
           setIsSubmitting(false);
           // Redirect to login page after a short delay
           setTimeout(() => {
-            window.location.href = '/login';
+            window.location.href = '/admin';
           }, 2000);
           return;
         }
@@ -280,7 +285,8 @@ const TutorManagement = () => {
     
     setIsDeleting(true);
     try {
-      const token = localStorage.getItem('token');
+      const userDataString = localStorage.getItem('userData');
+      const token = userDataString ? JSON.parse(userDataString).token : null;
       if (!token) {
         setError('Please login to continue');
         setShowErrorAlert(true);
@@ -649,7 +655,7 @@ const TutorManagement = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTutors = filteredTutors.slice(startIndex, startIndex + itemsPerPage);
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {showErrorAlert && error && (
         <div className="bg-red-50 border-l-4 border-red-400 p-4">
           <div className="flex">
@@ -986,6 +992,25 @@ const TutorManagement = () => {
                     placeholder="Enter any notes or remarks about the tutor's assignment..."
                   />
                 </div>
+
+                <div> { /* New Hadiya Amount Field Start */ }
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assigned Monthly Hadiya (₹)
+                  </label>
+                  <div className="relative">
+                    {/* Optional: Icon for currency if you have one, e.g., <FiDollarSign /> */}
+                    <input
+                      type="number"
+                      name="assignedHadiyaAmount"
+                      value={formData.assignedHadiyaAmount}
+                      onChange={(e) => setFormData(prev => ({ ...prev, assignedHadiyaAmount: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="e.g., 15000"
+                      min="0" // Optional: prevent negative numbers
+                    />
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">Enter the agreed monthly payment amount.</p>
+                </div> { /* New Hadiya Amount Field End */ }
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>

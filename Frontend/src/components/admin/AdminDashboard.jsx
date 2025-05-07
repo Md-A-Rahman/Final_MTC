@@ -7,6 +7,7 @@ import CenterManagement from './CenterManagement';
 import ReportManagement from './ReportManagement';
 import StudentManagement from './StudentManagement';
 import AdminManagement from './AdminManagement';
+import HadiyaManagement from './HadiyaManagement'; // Added HadiyaManagement import
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -56,6 +57,8 @@ const AdminDashboard = () => {
         return <StudentManagement />;
       case 'admins':
         return <AdminManagement />;
+      case 'hadiya': // Added hadiya case
+        return <HadiyaManagement />;
       default:
         return (
           <div className="p-6">

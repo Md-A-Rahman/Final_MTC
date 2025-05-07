@@ -62,7 +62,7 @@ const TutorOverview = () => {
   const [distance, setDistance] = useState(null)
 
   // Get tutor data from localStorage
-  const tutorData = JSON.parse(localStorage.getItem('user') || '{}')
+  const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
   const { post } = usePost()
 
   // Get center location from tutor data
@@ -113,7 +113,8 @@ const TutorOverview = () => {
   const handleMarkAttendance = async () => {
     if (locationMatch && currentLocation) {
       try {
-        const token = localStorage.getItem('token')
+        const userDataString = localStorage.getItem('userData'); // Changed from 'user' to 'userData' for consistency
+        const token = userDataString ? JSON.parse(userDataString).token : null;
         if (!token) {
           throw new Error('Authentication token not found')
         }

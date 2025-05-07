@@ -23,7 +23,7 @@ const Reports = () => {
       try {
         const response = await fetch('http://localhost:5000/api/centers', {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
           }
         })
         const data = await response.json()
@@ -52,7 +52,7 @@ const Reports = () => {
           `http://localhost:5000/api/attendance/report?month=${month}&year=${year}&centerId=${centerId}`,
           {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
             }
           }
         )
@@ -147,7 +147,7 @@ const Reports = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
         },
         body: JSON.stringify({
           tutorId,
@@ -171,7 +171,7 @@ const Reports = () => {
         `http://localhost:5000/api/attendance/report?month=${month}&year=${year}&centerId=${centerId}`,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
           }
         }
       )
@@ -284,7 +284,7 @@ const Reports = () => {
               {tutors.map((tutor) => {
                 const presentDays = Object.values(tutor.attendance).filter(Boolean).length
                 const totalDays = Object.values(tutor.attendance).length
-                const attendancePercentage = (presentDays / totalDays) * 100
+                const attendancePercentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
 
                 return (
                   <tr key={tutor.tutor._id} className="hover:bg-gray-50">

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { FiHome, FiUsers, FiMapPin, FiFileText, FiUser, FiLogOut, FiUserPlus } from 'react-icons/fi'
+import { FiHome, FiUsers, FiMapPin, FiFileText, FiUser, FiLogOut, FiUserPlus, FiDollarSign } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -44,6 +44,7 @@ const Sidebar = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FiHome },
     { id: 'tutors', label: 'Tutors', icon: FiUsers },
+    { id: 'hadiya', label: 'Hadiya Mgmt', icon: FiDollarSign }, // Added Hadiya link
     { id: 'centers', label: 'Centers', icon: FiMapPin },
     { id: 'reports', label: 'Reports', icon: FiFileText },
     { id: 'students', label: 'Students', icon: FiUser },

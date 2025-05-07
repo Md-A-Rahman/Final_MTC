@@ -22,10 +22,21 @@ const Overview = () => {
     ).sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [tutors]);
 
-  // Placeholder attendance percentage logic
   const attendancePercentage = useMemo(() => {
-    return tutors && tutors.length > 0 ? 'N/A' : '0%'
-  }, [tutors])
+    if (!tutors || tutors.length === 0) return '0%';
+
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const attendedToday = new Set();
+
+    attendanceRecords.forEach(record => {
+      if (format(new Date(record.date), 'yyyy-MM-dd') === today) {
+        attendedToday.add(record.tutorId);
+      }
+    });
+
+    const percentage = (attendedToday.size / tutors.length) * 100;
+    return `${attendedToday.size}/${tutors.length}`;
+  }, [tutors, attendanceRecords]);
 
   const stats = [
     { label: 'Total Tutors', value: tutorsLoading ? '...' : tutors?.length || 0, icon: FiUsers },

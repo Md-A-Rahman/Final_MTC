@@ -10,16 +10,16 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
   const [tutorProfile, setTutorProfile] = useState(null);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
+    const userData = localStorage.getItem('userData'); // Changed 'user' to 'userData'
     if (userData) {
       setTutorProfile(JSON.parse(userData));
     }
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setIsLoggedIn(false);
+    localStorage.removeItem("userData"); // Changed to remove 'userData'
+    // localStorage.removeItem("token"); // Token is usually part of userData, so this might be redundant or handled if token is stored separately
+    setIsLoggedIn(false); // This state might need to be lifted if it controls parent component
     navigate("/tutor");
   };
 

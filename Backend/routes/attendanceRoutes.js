@@ -1,6 +1,6 @@
 import express from 'express';
 import { markAttendance, getAttendanceReport } from '../controllers/attendanceController.js';
-import { auth } from '../middleware/auth.js';
+import { auth, adminOnly } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -8,9 +8,9 @@ const router = express.Router();
 router.use(auth);
 
 // Mark attendance
-router.post('/mark', markAttendance);
+router.post('/mark', adminOnly, markAttendance);
 
 // Get attendance report
-router.get('/report', getAttendanceReport);
+router.get('/report', adminOnly, getAttendanceReport);
 
 export default router; 

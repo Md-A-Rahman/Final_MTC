@@ -202,7 +202,11 @@ const CenterManagement = () => {
         formDataToSend.append('images', file);
       });
 
-      const token = localStorage.getItem('token');
+      const userDataString = localStorage.getItem('userData');
+      const token = userDataString ? JSON.parse(userDataString).token : null;
+      if (!token) {
+        throw new Error('No token found in local storage');
+      }
       const url = editingCenter 
         ? `http://localhost:5000/api/centers/${editingCenter._id}`
         : 'http://localhost:5000/api/centers';
@@ -255,7 +259,11 @@ const CenterManagement = () => {
 
     setIsDeleting(true);
     try {
-      const token = localStorage.getItem('token');
+      const userDataString = localStorage.getItem('userData');
+      const token = userDataString ? JSON.parse(userDataString).token : null;
+      if (!token) {
+        throw new Error('No token found in local storage');
+      }
       const response = await fetch(`http://localhost:5000/api/centers/${deletingCenter._id}`, {
         method: 'DELETE',
         headers: {
@@ -322,7 +330,7 @@ const CenterManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           Center Management
