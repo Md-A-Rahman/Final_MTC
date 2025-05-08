@@ -4,7 +4,7 @@ import { useInView } from 'react-intersection-observer'
 import { FiBookOpen, FiHeart, FiDollarSign, FiX, FiUser, FiMail, FiPhone, FiMapPin, FiBook, FiClock, FiUpload } from 'react-icons/fi'
 
 const CallToAction = () => {
-  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
+  const [ref, inView] = useInView({ triggerOnce: false, threshold: 0.1 })
   const [showTutorModal, setShowTutorModal] = useState(false)
   const [showDonationModal, setShowDonationModal] = useState(false)
   const [formData, setFormData] = useState({
@@ -148,7 +148,7 @@ const CallToAction = () => {
   const fadeIn = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }
 
   return (
-    <section id="contact" className="section bg-white" ref={ref}>
+    <section id="contact" className="section bg-blue-50" ref={ref}>
       <div className="container-custom">
         <motion.div 
           initial="hidden"
@@ -171,58 +171,70 @@ const CallToAction = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="card text-center hover:translate-y-[-8px]"
+            className="card text-center hover:translate-y-[-8px] flex flex-col h-full"
           >
-            <div className="inline-flex items-center justify-center p-3 bg-primary-100 text-primary-600 rounded-full mb-6">
-              <FiBookOpen size={28} />
+            <div className="flex-1 flex flex-col">
+              <div className="inline-flex items-center justify-center p-3 bg-primary-100 text-primary-600 rounded-full mb-6">
+                <FiBookOpen size={28} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Become a Tutor</h3>
+              <p className="text-gray-600 mb-8">Share your knowledge and make a direct impact on children's lives while gaining valuable experience.</p>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">Become a Tutor</h3>
-            <p className="text-gray-600 mb-8">Share your knowledge and make a direct impact on children's lives while gaining valuable experience.</p>
-            <button className="btn bg-primary-600 hover:bg-primary-700 text-white w-full" onClick={() => setShowTutorModal(true)}>
-              Apply as Tutor
-            </button>
+            <div className="mt-auto">
+              <button className="btn bg-primary-600 hover:bg-primary-700 text-white w-full" onClick={() => setShowTutorModal(true)}>
+                Apply as Tutor
+              </button>
+            </div>
           </motion.div>
           {/* Volunteer With Us */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
             transition={{ duration: 0.5, delay: 0.45 }}
-            className="card text-center hover:translate-y-[-8px]"
+            className="card text-center hover:translate-y-[-8px] flex flex-col h-full"
           >
-            <div className="inline-flex items-center justify-center p-3 bg-primary-100 text-primary-600 rounded-full mb-6">
-              <FiHeart size={28} />
+            <div className="flex-1 flex flex-col">
+              <div className="inline-flex items-center justify-center p-3 bg-primary-100 text-primary-600 rounded-full mb-6">
+                <FiHeart size={28} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Volunteer With Us</h3>
+              <p className="text-gray-600 mb-8">Help with organizing events, administrative tasks, or providing specialized skills to students.</p>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">Volunteer With Us</h3>
-            <p className="text-gray-600 mb-8">Help with organizing events, administrative tasks, or providing specialized skills to students.</p>
-            <a 
-              href="https://thequranfoundation.org/become-a-volunteer/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="btn bg-primary-600 hover:bg-primary-700 text-white w-full block"
-            >
-              Volunteer Now
-            </a>
+            <div className="mt-auto">
+              <a 
+                href="https://thequranfoundation.org/become-a-volunteer/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="btn bg-primary-600 hover:bg-primary-700 text-white w-full block"
+              >
+                Volunteer Now
+              </a>
+            </div>
           </motion.div>
           {/* Donate */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
             transition={{ duration: 0.5, delay: 0.6 }}
-            className="card text-center hover:translate-y-[-8px]"
+            className="card text-center hover:translate-y-[-8px] flex flex-col h-full"
           >
-            <div className="inline-flex items-center justify-center p-3 bg-primary-100 text-primary-600 rounded-full mb-6">
-              <FiDollarSign size={28} />
+            <div className="flex-1 flex flex-col">
+              <div className="inline-flex items-center justify-center p-3 bg-primary-100 text-primary-600 rounded-full mb-6">
+                <FiDollarSign size={28} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Donate</h3>
+              <p className="text-gray-600 mb-8">Support our program financially to help us reach more children and expand our impact.</p>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">Donate</h3>
-            <p className="text-gray-600 mb-8">Support our program financially to help us reach more children and expand our impact.</p>
-            <a 
-              href="https://thequranfoundation.org/donation/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="btn bg-primary-600 hover:bg-primary-700 text-white w-full block"
-            >
-              Make a Donation
-            </a>
+            <div className="mt-auto">
+              <a 
+                href="https://thequranfoundation.org/donation/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="btn bg-primary-600 hover:bg-primary-700 text-white w-full block"
+              >
+                Make a Donation
+              </a>
+            </div>
           </motion.div>
         </div>
 
@@ -312,11 +324,20 @@ const CallToAction = () => {
                   <button type="button" onClick={() => setShowTutorModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg">Submit Application</button>
                 </div>
-                {submitStatus && (
-                  <div className={`text-center font-medium mt-2 ${submitStatus.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
-                    {submitStatus}
-                  </div>
-                )}
+                {/* Popover for Tutor Application Status */}
+{submitStatus && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div className="bg-white rounded-xl shadow-xl p-8 max-w-sm w-full text-center">
+      <div className={`font-medium mb-6 ${submitStatus.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>{submitStatus}</div>
+      <button
+        className="btn bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg"
+        onClick={() => setSubmitStatus('')}
+      >
+        OK
+      </button>
+    </div>
+  </div>
+)}
               </form>
             </motion.div>
           </div>
@@ -425,11 +446,20 @@ const CallToAction = () => {
                 <button type="submit" className="w-full btn btn-primary">
                   Send Message
                 </button>
-                {contactSubmitStatus && (
-                  <div className={`text-center font-medium mt-2 ${contactSubmitStatus.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
-                    {contactSubmitStatus}
-                  </div>
-                )}
+                {/* Popover for Contact Form Status */}
+{contactSubmitStatus && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div className="bg-white rounded-xl shadow-xl p-8 max-w-sm w-full text-center">
+      <div className={`font-medium mb-6 ${contactSubmitStatus.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>{contactSubmitStatus}</div>
+      <button
+        className="btn bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg"
+        onClick={() => setContactSubmitStatus('')}
+      >
+        OK
+      </button>
+    </div>
+  </div>
+)}
               </form>
             </div>
           </div>

@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import useGet from '../CustomHooks/useGet'
 import usePost from '../CustomHooks/usePost'
+import useTodayAttendance from './useTodayAttendance'
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -52,7 +53,13 @@ const LocationMarker = ({ onLocationUpdate }) => {
   return position === null ? null : <Marker position={position} icon={redIcon} />
 }
 
+import { useRef } from 'react';
+
 const TutorOverview = () => {
+  const { alreadyMarked, loading: attendanceCheckLoading, error: attendanceCheckError } = useTodayAttendance();
+  const [showDeniedPopover, setShowDeniedPopover] = useState(false);
+  const popoverRef = useRef();
+
   const [currentTime, setCurrentTime] = useState(new Date())
   const [currentLocation, setCurrentLocation] = useState(null)
   const [locationMatch, setLocationMatch] = useState(null)
@@ -130,19 +137,19 @@ const TutorOverview = () => {
           })
         })
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || 'Failed to mark attendance')
-        }
-
         const data = await response.json()
         if (data.message === 'Attendance submitted successfully') {
           setAttendanceMarked(true)
           setError(null)
         }
       } catch (error) {
-        console.error('Error marking attendance:', error)
-        setError(error.message || 'Failed to mark attendance. Please try again.')
+        // Detect duplicate key error (E11000) from backend
+        if (error.message && error.message.includes('E11000')) {
+          setShowDeniedPopover(true);
+        } else {
+          setError(error.message || 'Failed to mark attendance');
+        }
+        console.error('Error marking attendance:', error);
       }
     }
   }
@@ -165,21 +172,49 @@ const TutorOverview = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-bold text-accent-600">{totalStudents}</div>
-            <div className="text-gray-600">Total Students</div>
-          </div>
+           <div>
+             <div className="text-2xl font-bold text-accent-600">
+               {loading ? (
+                 <svg className="animate-spin h-6 w-6 text-accent-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                 </svg>
+               ) : totalStudents}
+             </div>
+             <div className="text-gray-600">Total Students</div>
+           </div>
           <FiUsers className="text-4xl text-accent-400" />
         </div>
         <div className="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-bold text-primary-600">{assignedStudents}</div>
-            <div className="text-gray-600">My Assigned Students</div>
-          </div>
+           <div>
+             <div className="text-2xl font-bold text-accent-600">
+               {loading ? (
+                 <svg className="animate-spin h-6 w-6 text-accent-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                 </svg>
+               ) : assignedStudents}
+             </div>
+             <div className="text-gray-600">My Assigned Students</div>
+           </div>
           <FiCheck className="text-4xl text-primary-400" />
         </div>
       </div>
 
+      {showDeniedPopover && (
+        <div ref={popoverRef} className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full flex flex-col items-center">
+            <div className="text-red-600 text-2xl font-bold mb-2">Request Denied</div>
+            <div className="text-gray-800 mb-4">Attendance has already been marked for today.</div>
+            <button
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+              onClick={() => setShowDeniedPopover(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -187,77 +222,85 @@ const TutorOverview = () => {
         className="bg-white rounded-xl shadow-lg p-6"
       >
         <h2 className="text-xl font-bold mb-4">Mark Attendance</h2>
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg">
-            {error}
-          </div>
-        )}
-        {locationError && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg">
-            {locationError}
-          </div>
-        )}
-        <div className="h-[400px] rounded-lg overflow-hidden mb-4">
-          <MapContainer
-            center={[centerLocation.lat, centerLocation.lng]}
-            zoom={15}
-            style={{ height: '100%', width: '100%' }}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
-            <LocationMarker onLocationUpdate={handleLocationUpdate} />
-            <Marker 
-              position={[centerLocation.lat, centerLocation.lng]} 
-              icon={blueIcon}
-            />
-            <Circle
-              center={[centerLocation.lat, centerLocation.lng]}
-              radius={1300}
-              pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
-            />
-          </MapContainer>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            {locationMatch !== null && (
-              <div className="space-y-2">
-                <p className={`text-lg ${locationMatch ? 'text-green-600' : 'text-red-600'}`}>
-                  {locationMatch 
-                    ? 'Location verified. You can mark your attendance.'
-                    : 'Location does not match. Cannot mark attendance.'}
-                </p>
-                {distance !== null && (
-                  <p className="text-sm text-gray-600">
-                    Distance to center: {(distance * 1000).toFixed(0)} meters
-                  </p>
-                )}
+        {attendanceCheckLoading ? (
+          <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded">Checking attendance status...</div>
+        ) : alreadyMarked ? (
+          <div className="mb-4 p-3 bg-green-50 text-green-700 rounded">Today's attendance has already been marked.</div>
+        ) : (
+          <>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 text-red-700 rounded">
+                {error}
               </div>
             )}
-          </div>
-          <div className="flex gap-4">
-            <button
-              onClick={handleReset}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Reset
-            </button>
-            <button
-              onClick={handleMarkAttendance}
-              disabled={!locationMatch || attendanceMarked}
-              className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
-                locationMatch && !attendanceMarked
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              {attendanceMarked ? <FiCheck className="mr-2" /> : null}
-              {attendanceMarked ? 'Attendance Marked' : 'Mark Attendance'}
-            </button>
-          </div>
-        </div>
+            {locationError && (
+              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg">
+                {locationError}
+              </div>
+            )}
+            <div className="h-[400px] rounded-lg overflow-hidden mb-4">
+              <MapContainer
+                center={[centerLocation.lat, centerLocation.lng]}
+                zoom={15}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+                <LocationMarker onLocationUpdate={handleLocationUpdate} />
+                <Marker 
+                  position={[centerLocation.lat, centerLocation.lng]} 
+                  icon={blueIcon}
+                />
+                <Circle
+                  center={[centerLocation.lat, centerLocation.lng]}
+                  radius={1300}
+                  pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
+                />
+              </MapContainer>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                {locationMatch !== null && (
+                  <div className="space-y-2">
+                    <p className={`text-lg ${locationMatch ? 'text-green-600' : 'text-red-600'}`}>
+                      {locationMatch 
+                        ? 'Location verified. You can mark your attendance.'
+                        : 'Location does not match. Cannot mark attendance.'}
+                    </p>
+                    {distance !== null && (
+                      <p className="text-sm text-gray-600">
+                        Distance to center: {(distance * 1000).toFixed(0)} meters
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-4">
+                <button
+                  onClick={handleReset}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={handleMarkAttendance}
+                  disabled={!locationMatch || attendanceMarked}
+                  className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+                    locationMatch && !attendanceMarked
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  {attendanceMarked ? <FiCheck className="mr-2" /> : null}
+                  {attendanceMarked ? 'Attendance Marked' : 'Mark Attendance'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </motion.div>
     </div>
   )

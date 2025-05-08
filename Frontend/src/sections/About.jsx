@@ -7,7 +7,7 @@ import { assets } from '../assets/assets'
 
 const About = () => {
   const [ref, inView] = useInView({
-    triggerOnce: true,
+    triggerOnce: false,
     threshold: 0.1
   })
 

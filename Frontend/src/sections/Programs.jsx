@@ -6,7 +6,7 @@ import { assets } from '../assets/assets'
 
 const Programs = () => {
   const [ref, inView] = useInView({
-    triggerOnce: true,
+    triggerOnce: false,
     threshold: 0.1
   })
 

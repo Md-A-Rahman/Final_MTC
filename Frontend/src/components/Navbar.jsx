@@ -51,7 +51,7 @@ const Navbar = () => {
           <RouterLink to="/" className="relative z-10" onClick={closeMenu}>
             <div className="flex items-center">
               <span
-                className={`relative ${showLogoHalo ? 'after:content-[" "] after:absolute after:inset-0 after:rounded-full after:bg-white after:opacity-60 after:w-full after:h-full after:blur-[10px] after:-z-10' : ''}`}
+                className={`relative ${showLogoHalo ? 'after:content-[" "] after:absolute after:left-1/2 after:top-1/2 after:w-[110%] after:h-[110%] after:-translate-x-1/2 after:-translate-y-1/2 after:rounded-full after:bg-white after:opacity-60 after:blur-[8px] after:-z-10' : ''}`}
                 style={{ display: 'inline-block' }}
               >
                 <Logo useLink={false} />
@@ -105,7 +105,9 @@ const Navbar = () => {
                   className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                     link.name === 'Admin'
                       ? 'bg-secondary-600 text-white hover:bg-secondary-700'
-                      : 'bg-primary-600 text-white hover:bg-primary-700'
+                      : link.name === 'Tutor'
+                        ? 'bg-accent-600 text-white hover:bg-accent-700'
+                        : 'bg-primary-600 text-white hover:bg-primary-700'
                   } ${isLoginPage ? 'shadow' : ''}`}
                   onClick={closeMenu}
                 >
@@ -180,9 +182,12 @@ const Navbar = () => {
                 key={link.name}
                 to={link.path}
                 className={`block px-4 py-2 text-sm font-medium rounded-md ${
-                  link.name === 'Admin'
+                  (link.name === 'Admin'
                     ? 'bg-secondary-600 text-white hover:bg-secondary-700'
-                    : 'bg-primary-600 text-white hover:bg-primary-700'
+                    : link.name === 'Tutor'
+                      ? 'bg-accent-600 text-white hover:bg-accent-700'
+                      : 'bg-primary-600 text-white hover:bg-primary-700'
+                  )}
                 }`}
                 onClick={closeMenu}
               >

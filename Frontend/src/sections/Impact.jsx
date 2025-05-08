@@ -5,7 +5,7 @@ import YouTubeLazyPlayer from './YouTubeLazyPlayer'; // Adjust the path
 
 const Impact = () => {
   const [ref, inView] = useInView({
-    triggerOnce: true,
+    triggerOnce: false,
     threshold: 0.1
   });
 

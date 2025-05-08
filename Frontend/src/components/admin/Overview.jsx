@@ -10,33 +10,30 @@ const Overview = () => {
   const { response: centers, loading: centersLoading } = useGet('/centers')
   const { response: tutorApps, loading: appsLoading } = useGet('/tutor-applications')
 
-  // Get all attendance records from tutors
-  const attendanceRecords = useMemo(() => {
-    if (!tutors) return [];
-    return tutors.flatMap(tutor => 
-      tutor.attendance?.map(record => ({
-        ...record,
-        tutorName: tutor.name,
-        tutorId: tutor._id
-      })) || []
-    ).sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [tutors]);
+  // Fetch recent attendance directly from Attendance collection
+  const { response: recentAttendance, loading: attendanceLoading } = useGet('/attendance/recent');
+
+  // Remove old attendanceRecords logic
+
 
   const attendancePercentage = useMemo(() => {
-    if (!tutors || tutors.length === 0) return '0%';
+    if (!tutors || tutors.length === 0 || !recentAttendance) return '0%';
 
     const today = format(new Date(), 'yyyy-MM-dd');
     const attendedToday = new Set();
 
-    attendanceRecords.forEach(record => {
-      if (format(new Date(record.date), 'yyyy-MM-dd') === today) {
-        attendedToday.add(record.tutorId);
+    recentAttendance.forEach(record => {
+      if (
+        format(new Date(record.date), 'yyyy-MM-dd') === today &&
+        record.status === 'present' &&
+        record.tutor && record.tutor._id
+      ) {
+        attendedToday.add(record.tutor._id);
       }
     });
 
-    const percentage = (attendedToday.size / tutors.length) * 100;
     return `${attendedToday.size}/${tutors.length}`;
-  }, [tutors, attendanceRecords]);
+  }, [tutors, recentAttendance]);
 
   const stats = [
     { label: 'Total Tutors', value: tutorsLoading ? '...' : tutors?.length || 0, icon: FiUsers },
@@ -135,12 +132,12 @@ const Overview = () => {
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
         <div className="space-y-4">
-          {tutorsLoading ? (
+          {attendanceLoading ? (
             <p>Loading recent activity...</p>
-          ) : attendanceRecords.length > 0 ? (
-            attendanceRecords.slice(0, 5).map((record, index) => (
+          ) : recentAttendance && recentAttendance.length > 0 ? (
+            recentAttendance.slice(0, 5).map((record, index) => (
               <motion.div
-                key={`${record.tutorId}-${record.date}`}
+                key={record._id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
@@ -149,11 +146,11 @@ const Overview = () => {
                 <div className="flex items-center space-x-3">
                   <FiCheck className="w-5 h-5 text-green-500" />
                   <div>
-                    <p className="font-medium">{record.tutorName}</p>
-                    <p className="text-sm text-gray-600">Marked attendance at {record.centerName}</p>
+                    <p className="font-medium">{record.tutor?.name || 'Unknown Tutor'}</p>
+                    <p className="text-sm text-gray-600">Marked attendance at {record.center?.name || 'Unknown Center'}</p>
                   </div>
                 </div>
-                <span className="text-sm text-gray-500">{formatDate(record.date)}</span>
+                <span className="text-sm text-gray-500">{formatDate(record.createdAt)}</span>
               </motion.div>
             ))
           ) : (

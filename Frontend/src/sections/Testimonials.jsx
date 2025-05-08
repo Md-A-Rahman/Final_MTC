@@ -6,7 +6,7 @@ import { assets } from '../assets/assets'; // Assuming your assets.js is in the 
 
 const Testimonials = () => {
   const [ref, inView] = useInView({
-    triggerOnce: true,
+    triggerOnce: false,
     threshold: 0.1,
   });
 
