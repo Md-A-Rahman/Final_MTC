@@ -31,7 +31,7 @@ const TutorStudents = () => {
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Get tutor data from localStorage
-  const tutorData = JSON.parse(localStorage.getItem('user') || '{}')
+  const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
 
   // Fetch students data
   const { response: students, loading, error, refetch } = useGet('/students')
@@ -68,15 +68,21 @@ const TutorStudents = () => {
     setIsSubmitting(true)
 
     try {
-      const token = localStorage.getItem('token')
+      // Get token from userData in localStorage
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}')
+      const token = userData.token
       if (!token) {
         throw new Error('Please login to continue')
       }
 
       // Get tutor data from localStorage
-      const tutorData = JSON.parse(localStorage.getItem('user') || '{}')
-      if (!tutorData.assignedCenter) {
-        throw new Error('Tutor center information not found')
+      const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
+      console.log('Tutor Data:', tutorData)
+      console.log('Assigned Center:', tutorData.assignedCenter)
+      // Robust check for assignedCenter
+      const assignedCenter = tutorData.assignedCenter && (typeof tutorData.assignedCenter === 'string' ? tutorData.assignedCenter : tutorData.assignedCenter._id)
+      if (!assignedCenter) {
+        throw new Error('Tutor center information not found (assignedCenter is missing or invalid)')
       }
 
       // Format the data according to backend requirements
@@ -89,7 +95,7 @@ const TutorStudents = () => {
         gender: formData.gender,
         medium: formData.medium,
         aadharNumber: formData.aadharNumber.trim(),
-        assignedCenter: tutorData.assignedCenter && tutorData.assignedCenter._id ? tutorData.assignedCenter._id : tutorData.assignedCenter,
+        assignedCenter: assignedCenter,
         assignedTutor: tutorData._id,
         remarks: formData.remarks.trim()
       };
@@ -269,7 +275,8 @@ const TutorStudents = () => {
 
   const handleAttendanceSubmit = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+      const token = userData.token;
       if (!token) {
         throw new Error('Please login to continue')
       }
@@ -351,7 +358,7 @@ const TutorStudents = () => {
     try {
       const token = localStorage.getItem('token')
       if (!token) throw new Error('Please login to continue')
-      const tutorData = JSON.parse(localStorage.getItem('user') || '{}')
+      const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
       const updatedData = {
         name: editFormData.name,
         fatherName: editFormData.fatherName,

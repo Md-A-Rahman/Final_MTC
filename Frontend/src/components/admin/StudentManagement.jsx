@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUser, FiMail, FiPhone, FiEdit2, FiTrash2, FiSearch, FiPlus, FiBook } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiEdit2, FiTrash2, FiSearch, FiPlus, FiX } from 'react-icons/fi';
 import useGet from '../CustomHooks/useGet';
 import { toast } from 'react-hot-toast';
 
@@ -10,6 +10,7 @@ const StudentManagement = () => {
   const [showProfile, setShowProfile] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCenter, setSelectedCenter] = useState('');
   const [error, setError] = useState(null);
   const [showErrorAlert, setShowErrorAlert] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -198,42 +199,72 @@ const StudentManagement = () => {
             onClick={() => setShowProfile(null)}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <FiTrash2 size={20} />
+            <FiX size={20} />
           </button>
         </div>
 
         <div className="overflow-y-auto p-6 space-y-6">
           <div className="flex items-center">
             <div className="h-16 w-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-xl font-medium">
-              {student.name.charAt(0)}
+              {student.name?.charAt(0) || '?'}
             </div>
             <div className="ml-4">
               <h3 className="text-lg font-bold text-gray-900">{student.name}</h3>
-              <p className="text-sm text-gray-500">Grade {student.grade}</p>
+              {(student.grade || student.class || student.schoolInfo?.class) && (
+                <p className="text-sm text-gray-500">
+                  Grade {student.grade || student.class || student.schoolInfo?.class}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Email</p>
-              <p className="font-medium">{student.email}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Phone</p>
-              <p className="font-medium">{student.phone}</p>
+              <p className="font-medium">{student.phone || student.contact || student.guardianContact || 'Not provided'}</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Center</p>
-              <p className="font-medium">{student.center?.name || 'Not assigned'}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Subjects</p>
               <p className="font-medium">
-                {student.subjects?.length > 0 
-                  ? student.subjects.join(', ')
-                  : 'No subjects assigned'}
+                {student.center?.name || student.center?.area || student.center || student.assignedCenter?.name || student.assignedCenter || 'Not assigned'}
               </p>
             </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-500">Father's Name</p>
+              <p className="font-medium">{student.fatherName || 'Not provided'}</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-500">Gender</p>
+              <p className="font-medium">{student.gender || 'Not provided'}</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-500">Aadhar Number</p>
+              <p className="font-medium">{student.aadharNumber || 'Not provided'}</p>
+            </div>
+            {student.schoolInfo && (
+              <>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-500">School Name</p>
+                  <p className="font-medium">{student.schoolInfo.name || '-'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-500">Class</p>
+                  <p className="font-medium">{student.schoolInfo.class || '-'}</p>
+                </div>
+              </>
+            )}
+            {student.assignedTutor && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-500">Assigned Tutor</p>
+                <p className="font-medium">{student.assignedTutor.name || student.assignedTutor}</p>
+              </div>
+            )}
+            {student.remarks && (
+              <div className="bg-gray-50 p-4 rounded-lg col-span-2">
+                <p className="text-sm text-gray-500">Remarks</p>
+                <p className="font-medium">{student.remarks}</p>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -338,12 +369,17 @@ const StudentManagement = () => {
     const studentEmail = student.email || '';
     const studentPhone = student.phone || '';
     const studentGrade = student.grade || '';
+    const studentCenter = student.center?._id || '';
     
-    return searchTerm === '' || 
+    const matchesSearch = searchTerm === '' || 
       studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       studentEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
       studentPhone.includes(searchTerm) ||
       studentGrade.toString().includes(searchTerm);
+    
+    const matchesCenter = selectedCenter === '' || studentCenter === selectedCenter;
+    
+    return matchesSearch && matchesCenter;
   });
 
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
@@ -369,18 +405,8 @@ const StudentManagement = () => {
 
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Student Management
+          Student Details
         </h1>
-        <button
-          onClick={() => {
-            setEditingStudent(null);
-            resetForm();
-            setShowForm(true);
-          }}
-          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
-        >
-          <FiPlus className="mr-2" /> Add New Student
-        </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-lg p-6 space-y-4">
@@ -397,6 +423,20 @@ const StudentManagement = () => {
               />
             </div>
           </div>
+          <div className="w-[200px]">
+            <select
+              value={selectedCenter}
+              onChange={(e) => setSelectedCenter(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Centers</option>
+              {centers?.map(center => (
+                <option key={center._id} value={center._id}>
+                  {center.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="w-full">
@@ -412,9 +452,6 @@ const StudentManagement = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Grade & Center
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -427,48 +464,22 @@ const StudentManagement = () => {
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-medium">
-                        {student.name.charAt(0)}
+                        {student.name?.charAt(0) || '?'}
                       </div>
                       <div className="ml-3">
                         <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                        <div className="text-xs text-gray-500">Grade {student.grade}</div>
+                        <div className="text-xs text-gray-500">
+                          Grade {student.grade || student.class || student.schoolInfo?.class || '-'}
+                        </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{student.email}</div>
-                    <div className="text-xs text-gray-500">{student.phone}</div>
+                    <div className="text-sm text-gray-900">{student.phone || student.contact || '-'}</div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{student.center?.name || 'Not assigned'}</div>
-                    <div className="text-xs text-gray-500">
-                      {student.subjects?.length > 0 
-                        ? student.subjects.join(', ')
-                        : 'No subjects'}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(student);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                        disabled={isLoading}
-                      >
-                        <FiEdit2 size={18} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(student);
-                        }}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                        disabled={isLoading || isDeleting}
-                      >
-                        <FiTrash2 size={18} />
-                      </button>
+                    <div className="text-sm text-gray-900">
+                      {student.center?.name || student.center?.area || student.center || student.assignedCenter?.name || student.assignedCenter || 'Not assigned'}
                     </div>
                   </td>
                 </tr>
@@ -476,165 +487,35 @@ const StudentManagement = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4 mt-4">
+          <div className="flex items-center">
+            <span className="text-sm text-gray-700">
+              Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+              <span className="font-medium">
+                {Math.min(startIndex + itemsPerPage, filteredStudents.length)}
+              </span>{' '}
+              of <span className="font-medium">{filteredStudents.length}</span> results
+            </span>
+          </div>
+          <div className="flex space-x-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1 rounded-md ${
+                  currentPage === page
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-
-      <AnimatePresence>
-        {showForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          >
-            <motion.div
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.95 }}
-              className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  {editingStudent ? 'Edit Student' : 'Add New Student'}
-                </h2>
-                <button
-                  onClick={handleFormClose}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <FiTrash2 size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Full Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      pattern="[0-9]{10}"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Grade <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="grade"
-                      value={formData.grade}
-                      onChange={(e) => setFormData(prev => ({ ...prev, grade: e.target.value }))}
-                      min="1"
-                      max="12"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Center <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="center"
-                      value={formData.center}
-                      onChange={(e) => setFormData(prev => ({ ...prev, center: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    >
-                      <option value="">Select a center</option>
-                      {centers?.map((center) => (
-                        <option key={center._id} value={center._id}>
-                          {center.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Subjects
-                    </label>
-                    <input
-                      type="text"
-                      name="subjects"
-                      value={formData.subjects.join(', ')}
-                      onChange={(e) => setFormData(prev => ({ 
-                        ...prev, 
-                        subjects: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                      }))}
-                      placeholder="Enter subjects separated by commas"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={handleFormClose}
-                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                    disabled={isSubmitting}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {editingStudent ? 'Updating...' : 'Creating...'}
-                      </>
-                    ) : (
-                      editingStudent ? 'Update Student' : 'Add Student'
-                    )}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {showProfile && renderStudentProfile(showProfile)}
