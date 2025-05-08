@@ -14,6 +14,7 @@ import {
   submitAttendance,
   getCenterLocation
 } from '../controllers/tutorController.js';
+import { uploadTutorDocuments } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -96,5 +97,13 @@ router.post('/get-center-location', [
   body('tutorId').isMongoId().withMessage('Invalid tutor ID'),
   validateRequest
 ], getCenterLocation);
+
+// Create tutor with file uploads
+router.post('/', protect, adminOnly, 
+  uploadTutorDocuments,
+  tutorValidation,
+  validateRequest,
+  createTutor
+);
 
 export default router;

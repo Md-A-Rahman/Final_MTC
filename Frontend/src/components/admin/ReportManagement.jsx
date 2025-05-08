@@ -3,6 +3,10 @@ import { motion } from 'framer-motion';
 import { FiDownload, FiCalendar, FiFilter } from 'react-icons/fi';
 import useGet from '../CustomHooks/useGet';
 import { toast } from 'react-hot-toast';
+import { format } from 'date-fns';
+import Papa from 'papaparse';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 const ReportManagement = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -58,6 +62,72 @@ const ReportManagement = () => {
     }
   };
 
+  const handleDownloadCSV = () => {
+    const data = attendanceReport.map(report => {
+      const totalDays = Object.keys(report.attendance).length;
+      const presentDays = Object.values(report.attendance).filter(Boolean).length;
+      const attendanceRate = ((presentDays / totalDays) * 100).toFixed(1);
+
+      return {
+        'Tutor Name': report.tutor.name,
+        'Center': report.center.name,
+        'Present Days': presentDays,
+        'Attendance Rate': `${attendanceRate}%`
+      };
+    });
+
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `attendance_report_${format(new Date(), 'MMM_yyyy')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(16);
+    doc.text('Monthly Attendance Report', 14, 15);
+    doc.setFontSize(12);
+    doc.text(`Month: ${format(new Date(selectedYear, selectedMonth - 1), 'MMMM yyyy')}`, 14, 25);
+    if (selectedCenter) {
+      const centerName = centers.find(c => c._id === selectedCenter)?.name || '';
+      doc.text(`Center: ${centerName}`, 14, 35);
+    }
+
+    // Create table data
+    const tableData = attendanceReport.map(report => {
+      const totalDays = Object.keys(report.attendance).length;
+      const presentDays = Object.values(report.attendance).filter(Boolean).length;
+      const attendanceRate = ((presentDays / totalDays) * 100).toFixed(1);
+
+      return [
+        report.tutor.name,
+        report.center.name,
+        presentDays.toString(),
+        `${attendanceRate}%`
+      ];
+    });
+
+    doc.autoTable({
+      startY: selectedCenter ? 45 : 35,
+      head: [['Tutor Name', 'Center', 'Present Days', 'Attendance Rate']],
+      body: tableData,
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    });
+
+    doc.save(`attendance_report_${format(new Date(), 'MMM_yyyy')}.pdf`);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -90,14 +160,16 @@ const ReportManagement = () => {
         <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           Attendance Reports
         </h1>
-        <button
-          onClick={handleDownload}
-          disabled={isLoading}
-          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
-        >
-          <FiDownload className="mr-2" />
-          {isLoading ? 'Downloading...' : 'Download Report'}
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={handleDownloadCSV}
+            disabled={isLoading}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
+          >
+            <FiDownload className="mr-2" />
+            {isLoading ? 'Downloading...' : 'Download Report'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-lg p-6">
@@ -170,9 +242,6 @@ const ReportManagement = () => {
                     Present Days
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Absent Days
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Attendance Rate
                   </th>
                 </tr>
@@ -181,7 +250,6 @@ const ReportManagement = () => {
                 {attendanceReport.map((report) => {
                   const totalDays = Object.keys(report.attendance).length;
                   const presentDays = Object.values(report.attendance).filter(Boolean).length;
-                  const absentDays = totalDays - presentDays;
                   const attendanceRate = ((presentDays / totalDays) * 100).toFixed(1);
 
                   return (
@@ -196,9 +264,6 @@ const ReportManagement = () => {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{presentDays}</div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{absentDays}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{attendanceRate}%</div>

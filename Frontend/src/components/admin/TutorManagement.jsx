@@ -39,7 +39,15 @@ const TutorManagement = () => {
     subjects: [],
     sessionType: '',
     sessionTiming: '',
-    assignedHadiyaAmount: '' // Or 0
+    assignedHadiyaAmount: '',
+    aadharNumber: '',
+    aadharPhoto: null,
+    bankAccountNumber: '',
+    ifscCode: '',
+    passbookPhoto: null,
+    certificates: [],
+    memos: [],
+    resume: null
   })
 
   const subjects = [
@@ -66,7 +74,15 @@ const TutorManagement = () => {
       subjects: tutor.subjects || [],
       sessionType: tutor.sessionType,
       sessionTiming: tutor.sessionTiming,
-      assignedHadiyaAmount: tutor.assignedHadiyaAmount || '' // Or || 0
+      assignedHadiyaAmount: tutor.assignedHadiyaAmount || '', // Or || 0
+      aadharNumber: tutor.documents?.aadharNumber || '',
+      aadharPhoto: tutor.documents?.aadharPhoto || null,
+      bankAccountNumber: tutor.documents?.bankAccount?.accountNumber || '',
+      ifscCode: tutor.documents?.bankAccount?.ifscCode || '',
+      passbookPhoto: tutor.documents?.passbookPhoto || null,
+      certificates: tutor.documents?.certificates || [],
+      memos: tutor.documents?.memos || [],
+      resume: tutor.documents?.resume || null
     });
     setShowForm(true);
   };
@@ -92,7 +108,15 @@ const TutorManagement = () => {
       subjects: [],
       sessionType: '',
       sessionTiming: '',
-      assignedHadiyaAmount: '' // Or 0
+      assignedHadiyaAmount: '',
+      aadharNumber: '',
+      aadharPhoto: null,
+      bankAccountNumber: '',
+      ifscCode: '',
+      passbookPhoto: null,
+      certificates: [],
+      memos: [],
+      resume: null
     });
   };
 
@@ -103,173 +127,121 @@ const TutorManagement = () => {
     resetForm();
   };
 
+  const handleFileChange = (e) => {
+    const { name, files } = e.target;
+    if (name === 'certificates' || name === 'memos') {
+      setFormData(prev => ({ ...prev, [name]: Array.from(files) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: files[0] }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setShowErrorAlert(false);
     setIsSubmitting(true);
 
+    // Validate required fields (certificates and memos now optional)
+    if (!formData.name || !formData.email || !formData.phone || !formData.assignedCenter || !formData.subjects?.length || !formData.sessionType || !formData.sessionTiming || !formData.aadharNumber || !formData.aadharPhoto || !formData.bankAccountNumber || !formData.ifscCode || !formData.passbookPhoto || !formData.resume) {
+      setError('Please fill in all required fields, including all mandatory documents.');
+      setShowErrorAlert(true);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      // Validate required fields
-      if (!formData.name || !formData.email || !formData.phone || 
-          !formData.assignedCenter || !formData.subjects?.length || !formData.sessionType || !formData.sessionTiming) {
-        setError('Please fill in all required fields');
-        setShowErrorAlert(true);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // If password is provided, validate its length
-      if (formData.password && formData.password !== 'tutor@123' && formData.password.length < 6) {
-        setError('Password must be at least 6 characters long');
-        setShowErrorAlert(true);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Get the selected center
-      const selectedCenter = centers?.find(c => c._id === formData.assignedCenter);
-      if (!selectedCenter) {
-        setError('Please select a valid center');
-        setShowErrorAlert(true);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Format the data according to backend validation rules
-      const formattedData = {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        assignedCenter: selectedCenter._id,
-        subjects: formData.subjects,
-        sessionType: formData.sessionType,
-        sessionTiming: formData.sessionTiming,
-        assignmentInformation: formData.assignmentInfo || '',
-        assignedHadiyaAmount: formData.assignedHadiyaAmount ? parseFloat(formData.assignedHadiyaAmount) : 0
-      };
-
-      // Only include password if it's being changed
-      if (formData.password && formData.password !== 'tutor@123') {
-        // Validate password length
-        if (formData.password.length < 6) {
-          setError('Password must be at least 6 characters long');
-          setShowErrorAlert(true);
-          setIsSubmitting(false);
-          return;
-        }
-        formattedData.password = formData.password;
-      } else {
-        // If password is not being changed, don't include it in the request
-        delete formattedData.password;
-      }
-
-      // Check if all required information is complete
-      const isInformationComplete = Boolean(
-        formData.name &&
-        formData.email &&
-        formData.phone &&
-        formData.assignedCenter &&
-        formData.subjects &&
-        formData.subjects.length > 0 &&
-        formData.sessionType &&
-        formData.sessionTiming
-      );
-
-      // Show status based on information completeness
-      if (isInformationComplete) {
-        setEditingTutor({ ...editingTutor, status: 'active' });
-        setFormData({ ...formData, status: 'active' });
-      } else {
-        setEditingTutor({ ...editingTutor, status: 'pending' });
-        setFormData({ ...formData, status: 'pending' });
-      }
-
       const userDataString = localStorage.getItem('userData');
       const token = userDataString ? JSON.parse(userDataString).token : null;
       if (!token) {
         setError('Please login to continue');
         setShowErrorAlert(true);
         setIsSubmitting(false);
-        // Redirect to login page after a short delay
-        setTimeout(() => {
-          window.location.href = '/admin';
-        }, 2000);
+        setTimeout(() => { window.location.href = '/admin'; }, 2000);
         return;
       }
+
+      const form = new FormData();
+      form.append('name', formData.name);
+      form.append('email', formData.email);
+      form.append('phone', formData.phone);
+      form.append('password', formData.password);
+      form.append('assignmentInfo', formData.assignmentInfo);
+      form.append('assignedCenter', formData.assignedCenter);
+      formData.subjects.forEach(subj => form.append('subjects', subj));
+      form.append('sessionType', formData.sessionType);
+      form.append('sessionTiming', formData.sessionTiming);
+      form.append('assignedHadiyaAmount', formData.assignedHadiyaAmount);
+      form.append('documents[aadharNumber]', formData.aadharNumber);
+      form.append('aadharPhoto', formData.aadharPhoto);
+      form.append('documents[bankAccount][accountNumber]', formData.bankAccountNumber);
+      form.append('documents[bankAccount][ifscCode]', formData.ifscCode);
+      form.append('passbookPhoto', formData.passbookPhoto);
+      formData.certificates.forEach(file => form.append('certificates', file));
+      formData.memos.forEach(file => form.append('memos', file));
+      form.append('resume', formData.resume);
 
       const url = editingTutor 
         ? `http://localhost:5000/api/tutors/${editingTutor._id}`
         : 'http://localhost:5000/api/tutors';
 
-      try {
-        const response = await fetch(url, {
-          method: editingTutor ? 'PUT' : 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(formattedData)
-        });
+      const response = await fetch(url, {
+        method: editingTutor ? 'PUT' : 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: form
+      });
+      const data = await response.json();
 
-        const data = await response.json();
+      if (!response.ok) {
+        // Handle different error cases
+        if (response.status === 401) {
+          setError('Your session has expired. Please login again.');
+          setShowErrorAlert(true);
+          setIsSubmitting(false);
+          // Redirect to login page after a short delay
+          setTimeout(() => {
+            window.location.href = '/admin';
+          }, 2000);
+          return;
+        }
 
-        if (!response.ok) {
-          // Handle different error cases
-          if (response.status === 401) {
-            setError('Your session has expired. Please login again.');
-            setShowErrorAlert(true);
-            setIsSubmitting(false);
-            // Redirect to login page after a short delay
-            setTimeout(() => {
-              window.location.href = '/admin';
-            }, 2000);
-            return;
+        if (response.status === 400) {
+          if (data.message) {
+            setError(data.message);
+          } else if (data.errors && data.errors.length > 0) {
+            setError(data.errors.map(error => error.msg).join(', '));
+          } else {
+            setError('Failed to update tutor. Please check your input and try again.');
           }
-
-          if (response.status === 400) {
-            if (data.message) {
-              setError(data.message);
-            } else if (data.errors && data.errors.length > 0) {
-              setError(data.errors.map(error => error.msg).join(', '));
-            } else {
-              setError('Failed to update tutor. Please check your input and try again.');
-            }
-            setShowErrorAlert(true);
-            setIsSubmitting(false);
-            return;
-          }
-
-          if (data.message?.includes('already exists')) {
-            setError('A tutor with this phone number already exists. Please use a different phone number.');
-            setShowErrorAlert(true);
-            setShowForm(false);
-            setIsSubmitting(false);
-            return;
-          }
-
-          // Default error message for other cases
-          setError('Failed to update tutor. Please check your input and try again.');
           setShowErrorAlert(true);
           setIsSubmitting(false);
           return;
         }
 
-        // Success case
-        setShowForm(false);
-        setEditingTutor(null);
-        resetForm();
-        // Refresh tutors list
-        setRefreshKey(prev => prev + 1);
-        toast.success('Tutor updated successfully');
-      } catch (error) {
-        console.error('Error updating tutor:', error);
-        setError('An error occurred. Please check your internet connection and try again.');
+        if (data.message?.includes('already exists')) {
+          setError('A tutor with this phone number already exists. Please use a different phone number.');
+          setShowErrorAlert(true);
+          setShowForm(false);
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Default error message for other cases
+        setError('Failed to update tutor. Please check your input and try again.');
         setShowErrorAlert(true);
         setIsSubmitting(false);
+        return;
       }
+
+      // Success case
+      setShowForm(false);
+      setEditingTutor(null);
+      resetForm();
+      // Refresh tutors list
+      setRefreshKey(prev => prev + 1);
+      toast.success('Tutor updated successfully');
     } catch (error) {
       console.error('Error updating tutor:', error);
       setError('An error occurred. Please check your internet connection and try again.');
@@ -557,6 +529,20 @@ const TutorManagement = () => {
                   <p className="text-sm text-yellow-800">Resume pending</p>
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="text-lg font-semibold text-gray-900 mb-2">Documents</h4>
+            <div className="space-y-2 text-sm">
+              <div><span className="font-medium">Aadhar Number:</span> {tutor.documents?.aadharNumber || <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Aadhar Photo:</span> {tutor.documents?.aadharPhoto ? (<a href={`/${tutor.documents.aadharPhoto}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View</a>) : <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Bank Account Number:</span> {tutor.documents?.bankAccount?.accountNumber || <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">IFSC Code:</span> {tutor.documents?.bankAccount?.ifscCode || <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Passbook Photo:</span> {tutor.documents?.bankAccount?.passbookPhoto ? (<a href={`/${tutor.documents.bankAccount.passbookPhoto}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View</a>) : <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Certificates:</span> {Array.isArray(tutor.documents?.certificates) && tutor.documents.certificates.length > 0 ? tutor.documents.certificates.map((file, idx) => (<a key={idx} href={`/${file}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">View {idx + 1}</a>)) : <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Memos:</span> {Array.isArray(tutor.documents?.memos) && tutor.documents.memos.length > 0 ? tutor.documents.memos.map((file, idx) => (<a key={idx} href={`/${file}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">View {idx + 1}</a>)) : <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Resume:</span> {tutor.documents?.resume ? (<a href={`/${tutor.documents.resume}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View</a>) : <span className="text-gray-400">Not Provided</span>}</div>
             </div>
           </div>
         </div>
@@ -938,7 +924,7 @@ const TutorManagement = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1140,6 +1126,41 @@ const TutorManagement = () => {
                         <option value="after_isha">After Isha</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number <span className="text-red-500">*</span></label>
+                    <input type="text" name="aadharNumber" value={formData.aadharNumber} onChange={e => setFormData(prev => ({ ...prev, aadharNumber: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Photo <span className="text-red-500">*</span></label>
+                    <input type="file" name="aadharPhoto" accept="image/*" onChange={handleFileChange} className="w-full" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account Number <span className="text-red-500">*</span></label>
+                    <input type="text" name="bankAccountNumber" value={formData.bankAccountNumber} onChange={e => setFormData(prev => ({ ...prev, bankAccountNumber: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code <span className="text-red-500">*</span></label>
+                    <input type="text" name="ifscCode" value={formData.ifscCode} onChange={e => setFormData(prev => ({ ...prev, ifscCode: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Passbook Photo <span className="text-red-500">*</span></label>
+                    <input type="file" name="passbookPhoto" accept="image/*" onChange={handleFileChange} className="w-full" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificates <span className="text-red-500">*</span> (multiple allowed)</label>
+                    <input type="file" name="certificates" accept="image/*,application/pdf" multiple onChange={handleFileChange} className="w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Memos <span className="text-red-500">*</span> (multiple allowed)</label>
+                    <input type="file" name="memos" accept="image/*,application/pdf" multiple onChange={handleFileChange} className="w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Resume <span className="text-red-500">*</span></label>
+                    <input type="file" name="resume" accept="application/pdf,.doc,.docx" onChange={handleFileChange} className="w-full" required />
                   </div>
                 </div>
 

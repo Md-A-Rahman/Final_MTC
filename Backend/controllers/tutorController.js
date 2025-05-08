@@ -49,7 +49,7 @@ export const getTutor = async (req, res) => {
   }
 };
 
-// @desc    Create new tutor
+// @desc    Create a new tutor
 // @route   POST /api/tutors
 // @access  Private/Admin
 export const createTutor = async (req, res) => {
@@ -59,68 +59,86 @@ export const createTutor = async (req, res) => {
       email,
       phone,
       password,
-      qualifications,
       assignedCenter,
-      subjects,
       sessionType,
       sessionTiming,
-      documents,
-      assignedHadiyaAmount // Added
+      subjects,
+      assignmentInfo,
+      assignedHadiyaAmount
     } = req.body;
 
-    // Check if tutor exists
-    const tutorExists = await Tutor.findOne({ phone });
-    if (tutorExists) {
-      return res.status(400).json({ message: 'Tutor already exists' });
+    // Required document fields from FormData
+    const aadharNumber = req.body['documents[aadharNumber]'] || req.body.aadharNumber;
+    const bankAccountNumber = req.body['documents[bankAccount][accountNumber]'] || req.body.bankAccountNumber;
+    const ifscCode = req.body['documents[bankAccount][ifscCode]'] || req.body.ifscCode;
+
+    // Required file uploads
+    const aadharPhoto = req.files?.aadharPhoto ? req.files.aadharPhoto[0].path : null;
+    const passbookPhoto = req.files?.passbookPhoto ? req.files.passbookPhoto[0].path : null;
+    const resume = req.files?.resume ? req.files.resume[0].path : null;
+    // Optional file uploads
+    const certificates = req.files?.certificates ? req.files.certificates.map(f => f.path) : [];
+    const memos = req.files?.memos ? req.files.memos.map(f => f.path) : [];
+
+    // Validate required fields
+    if (!aadharNumber || !aadharPhoto) {
+      return res.status(400).json({ message: 'Aadhar number and photo are required' });
+    }
+    if (!bankAccountNumber || !ifscCode || !passbookPhoto) {
+      return res.status(400).json({ message: 'Bank account number, IFSC code, and passbook photo are required' });
+    }
+    if (!resume) {
+      return res.status(400).json({ message: 'Resume is required' });
     }
 
-    // Create tutor
-    const tutor = await Tutor.create({
+    // Check if tutor already exists
+    const existingTutor = await Tutor.findOne({ email });
+    if (existingTutor) {
+      return res.status(400).json({ message: 'Tutor with this email already exists' });
+    }
+
+    // Create new tutor with document paths
+    const tutor = new Tutor({
       name,
       email,
       phone,
       password,
-      qualifications: qualifications || '',
       assignedCenter,
-      subjects,
       sessionType,
       sessionTiming,
+      subjects,
+      assignmentInformation: assignmentInfo,
+      assignedHadiyaAmount: assignedHadiyaAmount || 0,
       documents: {
-        aadharNumber: documents?.aadharNumber || '',
-        aadharPhoto: documents?.aadharPhoto || null,
+        aadharNumber,
+        aadharPhoto,
         bankAccount: {
-          accountNumber: documents?.bankAccount?.accountNumber || '',
-          ifscCode: documents?.bankAccount?.ifscCode || '',
-          passbookPhoto: documents?.bankAccount?.passbookPhoto || null
+          accountNumber: bankAccountNumber,
+          ifscCode,
+          passbookPhoto
         },
-        certificates: documents?.certificates || null,
-        memos: documents?.memos || null,
-        resume: documents?.resume || null
-      },
-      location: {
-        type: 'Point',
-        coordinates: [0, 0] // Default coordinates
-      },
-      assignedHadiyaAmount: assignedHadiyaAmount || 0 // Added, with a default if not provided
+        certificates,
+        memos,
+        resume
+      }
     });
 
-    // Add tutor to center's tutors array
-    await Center.findByIdAndUpdate(tutor.assignedCenter, { $addToSet: { tutors: tutor._id } });
+    await tutor.save();
 
     res.status(201).json({
-      _id: tutor._id,
-      name: tutor.name,
-      email: tutor.email,
-      phone: tutor.phone,
-      role: tutor.role,
-      assignedCenter: tutor.assignedCenter
+      message: 'Tutor created successfully',
+      tutor: {
+        _id: tutor._id,
+        name: tutor.name,
+        email: tutor.email,
+        phone: tutor.phone,
+        assignedCenter: tutor.assignedCenter,
+        documents: tutor.documents
+      }
     });
   } catch (error) {
-    console.error('Create tutor error:', error);
-    res.status(500).json({ 
-      message: 'Error creating tutor',
-      error: error.message 
-    });
+    console.error('Error creating tutor:', error);
+    res.status(500).json({ message: 'Error creating tutor', error: error.message });
   }
 };
 
