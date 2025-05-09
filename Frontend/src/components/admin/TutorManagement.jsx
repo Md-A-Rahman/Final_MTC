@@ -16,6 +16,7 @@ const TutorManagement = () => {
   const [selectedCenter, setSelectedCenter] = useState('')
   const [error, setError] = useState(null);
   const [showErrorAlert, setShowErrorAlert] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmClose, setShowConfirmClose] = useState(false);
@@ -103,179 +104,180 @@ const TutorManagement = () => {
     resetForm();
   };
 
+  const validateFields = () => {
+    const errors = {};
+    if (!formData.name.trim()) errors.name = 'Name is required.';
+    if (!formData.email.trim()) errors.email = 'Email is required.';
+    else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(formData.email)) errors.email = 'Invalid email address.';
+    if (!formData.phone.trim()) errors.phone = 'Phone number is required.';
+    else if (!/^\d{10}$/.test(formData.phone)) errors.phone = 'Phone must be 10 digits.';
+    if (!formData.password || (formData.password !== 'tutor@123' && formData.password.length < 6)) errors.password = 'Password must be at least 6 characters.';
+    if (!formData.assignedCenter) errors.assignedCenter = 'Please select a center.';
+    if (!formData.subjects || formData.subjects.length === 0) errors.subjects = 'Select at least one subject.';
+    if (!formData.sessionType) errors.sessionType = 'Select session type.';
+    if (!formData.sessionTiming) errors.sessionTiming = 'Select session timing.';
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setShowErrorAlert(false);
     setIsSubmitting(true);
 
+    const errors = validateFields();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError('Please fix the errors below.');
+      setShowErrorAlert(true);
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Get the selected center
+    const selectedCenter = centers?.find(c => c._id === formData.assignedCenter);
+    if (!selectedCenter) {
+      setFieldErrors(prev => ({ ...prev, assignedCenter: 'Please select a valid center.' }));
+      setError('Please select a valid center');
+      setShowErrorAlert(true);
+      setIsSubmitting(false);
+      return;
+    }
+
+    // --- Build FormData for multipart/form-data ---
+    const formPayload = new FormData();
+    formPayload.append('name', formData.name.trim());
+    formPayload.append('email', formData.email.trim());
+    formPayload.append('phone', formData.phone.trim());
+    formPayload.append('assignedCenter', selectedCenter._id);
+    formPayload.append('sessionType', formData.sessionType);
+    formPayload.append('sessionTiming', formData.sessionTiming);
+    formPayload.append('assignmentInformation', formData.assignmentInfo || '');
+    formPayload.append('assignedHadiyaAmount', formData.assignedHadiyaAmount ? parseFloat(formData.assignedHadiyaAmount) : 0);
+    if (formData.password && formData.password !== 'tutor@123') {
+      formPayload.append('password', formData.password);
+    }
+    // Subjects as array
+    if (Array.isArray(formData.subjects)) {
+      formData.subjects.forEach((s, i) => formPayload.append(`subjects[${i}]`, s));
+    }
+    // Documents
+    if (formData.aadharNumber) formPayload.append('aadharNumber', formData.aadharNumber);
+    if (formData.aadharPhoto) formPayload.append('aadharPhoto', formData.aadharPhoto);
+    if (formData.bankAccountNumber) formPayload.append('bankAccountNumber', formData.bankAccountNumber);
+    if (formData.ifscCode) formPayload.append('ifscCode', formData.ifscCode);
+    if (formData.passbookPhoto) formPayload.append('passbookPhoto', formData.passbookPhoto);
+    // Certificates (multiple)
+    if (formData.certificates && formData.certificates.length > 0) {
+      Array.from(formData.certificates).forEach((file, i) => formPayload.append('certificates', file));
+    }
+    // Memos (multiple)
+    if (formData.memos && formData.memos.length > 0) {
+      Array.from(formData.memos).forEach((file, i) => formPayload.append('memos', file));
+    }
+    // Resume (single)
+    if (formData.resume) formPayload.append('resume', formData.resume);
+
+    // Check if all required information is complete
+    const isInformationComplete = Boolean(
+      formData.name &&
+      formData.email &&
+      formData.phone &&
+      formData.assignedCenter &&
+      formData.subjects &&
+      formData.subjects.length > 0 &&
+      formData.sessionType &&
+      formData.sessionTiming
+    );
+
+    // Show status based on information completeness
+    if (isInformationComplete) {
+      setEditingTutor({ ...editingTutor, status: 'active' });
+      setFormData({ ...formData, status: 'active' });
+    } else {
+      setEditingTutor({ ...editingTutor, status: 'pending' });
+      setFormData({ ...formData, status: 'pending' });
+    }
+
+    const userDataString = localStorage.getItem('userData');
+    const token = userDataString ? JSON.parse(userDataString).token : null;
+    if (!token) {
+      setError('Please login to continue');
+      setShowErrorAlert(true);
+      setIsSubmitting(false);
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        window.location.href = '/admin';
+      }, 2000);
+      return;
+    }
+
+    const url = editingTutor 
+      ? `http://localhost:5000/api/tutors/${editingTutor._id}`
+      : 'http://localhost:5000/api/tutors';
+
     try {
-      // Validate required fields
-      if (!formData.name || !formData.email || !formData.phone || 
-          !formData.assignedCenter || !formData.subjects?.length || !formData.sessionType || !formData.sessionTiming) {
-        setError('Please fill in all required fields');
-        setShowErrorAlert(true);
-        setIsSubmitting(false);
-        return;
-      }
+      const response = await fetch(url, {
+        method: editingTutor ? 'PUT' : 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // 'Content-Type': 'multipart/form-data', // DO NOT SET THIS! Let browser set it
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: formPayload
+      });
 
-      // If password is provided, validate its length
-      if (formData.password && formData.password !== 'tutor@123' && formData.password.length < 6) {
-        setError('Password must be at least 6 characters long');
-        setShowErrorAlert(true);
-        setIsSubmitting(false);
-        return;
-      }
+      const data = await response.json();
 
-      // Get the selected center
-      const selectedCenter = centers?.find(c => c._id === formData.assignedCenter);
-      if (!selectedCenter) {
-        setError('Please select a valid center');
-        setShowErrorAlert(true);
-        setIsSubmitting(false);
-        return;
-      }
+      if (!response.ok) {
+        // Handle different error cases
+        if (response.status === 401) {
+          setError('Your session has expired. Please login again.');
+          setShowErrorAlert(true);
+          setIsSubmitting(false);
+          // Redirect to login page after a short delay
+          setTimeout(() => {
+            window.location.href = '/admin';
+          }, 2000);
+          return;
+        }
 
-      // --- Build FormData for multipart/form-data ---
-      const formPayload = new FormData();
-      formPayload.append('name', formData.name.trim());
-      formPayload.append('email', formData.email.trim());
-      formPayload.append('phone', formData.phone.trim());
-      formPayload.append('assignedCenter', selectedCenter._id);
-      formPayload.append('sessionType', formData.sessionType);
-      formPayload.append('sessionTiming', formData.sessionTiming);
-      formPayload.append('assignmentInformation', formData.assignmentInfo || '');
-      formPayload.append('assignedHadiyaAmount', formData.assignedHadiyaAmount ? parseFloat(formData.assignedHadiyaAmount) : 0);
-      if (formData.password && formData.password !== 'tutor@123') {
-        formPayload.append('password', formData.password);
-      }
-      // Subjects as array
-      if (Array.isArray(formData.subjects)) {
-        formData.subjects.forEach((s, i) => formPayload.append(`subjects[${i}]`, s));
-      }
-      // Documents
-      if (formData.aadharNumber) formPayload.append('aadharNumber', formData.aadharNumber);
-      if (formData.aadharPhoto) formPayload.append('aadharPhoto', formData.aadharPhoto);
-      if (formData.bankAccountNumber) formPayload.append('bankAccountNumber', formData.bankAccountNumber);
-      if (formData.ifscCode) formPayload.append('ifscCode', formData.ifscCode);
-      if (formData.passbookPhoto) formPayload.append('passbookPhoto', formData.passbookPhoto);
-      // Certificates (multiple)
-      if (formData.certificates && formData.certificates.length > 0) {
-        Array.from(formData.certificates).forEach((file, i) => formPayload.append('certificates', file));
-      }
-      // Memos (multiple)
-      if (formData.memos && formData.memos.length > 0) {
-        Array.from(formData.memos).forEach((file, i) => formPayload.append('memos', file));
-      }
-      // Resume (single)
-      if (formData.resume) formPayload.append('resume', formData.resume);
-
-      // Check if all required information is complete
-      const isInformationComplete = Boolean(
-        formData.name &&
-        formData.email &&
-        formData.phone &&
-        formData.assignedCenter &&
-        formData.subjects &&
-        formData.subjects.length > 0 &&
-        formData.sessionType &&
-        formData.sessionTiming
-      );
-
-      // Show status based on information completeness
-      if (isInformationComplete) {
-        setEditingTutor({ ...editingTutor, status: 'active' });
-        setFormData({ ...formData, status: 'active' });
-      } else {
-        setEditingTutor({ ...editingTutor, status: 'pending' });
-        setFormData({ ...formData, status: 'pending' });
-      }
-
-      const userDataString = localStorage.getItem('userData');
-      const token = userDataString ? JSON.parse(userDataString).token : null;
-      if (!token) {
-        setError('Please login to continue');
-        setShowErrorAlert(true);
-        setIsSubmitting(false);
-        // Redirect to login page after a short delay
-        setTimeout(() => {
-          window.location.href = '/admin';
-        }, 2000);
-        return;
-      }
-
-      const url = editingTutor 
-        ? `http://localhost:5000/api/tutors/${editingTutor._id}`
-        : 'http://localhost:5000/api/tutors';
-
-      try {
-        const response = await fetch(url, {
-          method: editingTutor ? 'PUT' : 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            // 'Content-Type': 'multipart/form-data', // DO NOT SET THIS! Let browser set it
-            'Accept': 'application/json'
-          },
-          credentials: 'include',
-          body: formPayload
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          // Handle different error cases
-          if (response.status === 401) {
-            setError('Your session has expired. Please login again.');
-            setShowErrorAlert(true);
-            setIsSubmitting(false);
-            // Redirect to login page after a short delay
-            setTimeout(() => {
-              window.location.href = '/admin';
-            }, 2000);
-            return;
+        if (response.status === 400) {
+          if (data.message) {
+            setError(data.message);
+          } else if (data.errors && data.errors.length > 0) {
+            setError(data.errors.map(error => error.msg).join(', '));
+          } else {
+            setError('Failed to update tutor. Please check your input and try again.');
           }
-
-          if (response.status === 400) {
-            if (data.message) {
-              setError(data.message);
-            } else if (data.errors && data.errors.length > 0) {
-              setError(data.errors.map(error => error.msg).join(', '));
-            } else {
-              setError('Failed to update tutor. Please check your input and try again.');
-            }
-            setShowErrorAlert(true);
-            setIsSubmitting(false);
-            return;
-          }
-
-          if (data.message?.includes('already exists')) {
-            setError('A tutor with this phone number already exists. Please use a different phone number.');
-            setShowErrorAlert(true);
-            setShowForm(false);
-            setIsSubmitting(false);
-            return;
-          }
-
-          // Default error message for other cases
-          setError('Failed to update tutor. Please check your input and try again.');
           setShowErrorAlert(true);
           setIsSubmitting(false);
           return;
         }
 
-        // Success case
-        setShowForm(false);
-        setEditingTutor(null);
-        resetForm();
-        // Refresh tutors list
-        setRefreshKey(prev => prev + 1);
-        toast.success('Tutor updated successfully');
-      } catch (error) {
-        console.error('Error updating tutor:', error);
-        setError('An error occurred. Please check your internet connection and try again.');
+        if (data.message?.includes('already exists')) {
+          setError('A tutor with this phone number already exists. Please use a different phone number.');
+          setShowErrorAlert(true);
+          setShowForm(false);
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Default error message for other cases
+        setError('Failed to update tutor. Please check your input and try again.');
         setShowErrorAlert(true);
         setIsSubmitting(false);
+        return;
       }
+
+      // Success case
+      setShowForm(false);
+      setEditingTutor(null);
+      resetForm();
+      // Refresh tutors list
+      setRefreshKey(prev => prev + 1);
+      toast.success('Tutor updated successfully');
     } catch (error) {
       console.error('Error updating tutor:', error);
       setError('An error occurred. Please check your internet connection and try again.');
@@ -962,6 +964,7 @@ const TutorManagement = () => {
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
                       />
+                      {fieldErrors.name && <p className="text-red-500 text-xs mt-1">{fieldErrors.name}</p>}
                     </div>
                   </div>
 
@@ -981,6 +984,7 @@ const TutorManagement = () => {
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
                       />
+                      {fieldErrors.email && <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>}
                     </div>
                   </div>
 
@@ -998,9 +1002,11 @@ const TutorManagement = () => {
                         value={formData.phone}
                         onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                         pattern="[0-9]{10}"
+                        maxLength={10}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
                       />
+                      {fieldErrors.phone && <p className="text-red-500 text-xs mt-1">{fieldErrors.phone}</p>}
                     </div>
                     <p className="mt-1 text-sm text-gray-500">10-digit mobile number</p>
                   </div>
@@ -1011,13 +1017,14 @@ const TutorManagement = () => {
                     </label>
                     <div className="relative">
                       <input
-                        type="text"
+                        type="password"
                         name="password"
                         value={formData.password}
                         onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
                       />
+                      {fieldErrors.password && <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>}
                     </div>
                     <p className="mt-1 text-sm text-gray-500">Default password: tutor@123</p>
                   </div>
@@ -1068,6 +1075,7 @@ const TutorManagement = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       required
                     >
+                      {fieldErrors.assignedCenter && <p className="text-red-500 text-xs mt-1">{fieldErrors.assignedCenter}</p>}
                       <option value="">Select a center</option>
                       {centers?.map(center => (
                         <option key={center._id} value={center._id}>
@@ -1102,6 +1110,7 @@ const TutorManagement = () => {
                         </label>
                       ))}
                     </div>
+                    {fieldErrors.subjects && <p className="text-red-500 text-xs mt-1">{fieldErrors.subjects}</p>}
                   </div>
                 </div>
 
@@ -1117,6 +1126,7 @@ const TutorManagement = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       required
                     >
+                      {fieldErrors.sessionType && <p className="text-red-500 text-xs mt-1">{fieldErrors.sessionType}</p>}
                       <option value="">Select session type</option>
                       <option value="arabic">Arabic</option>
                       <option value="tuition">Tuition</option>
@@ -1138,6 +1148,7 @@ const TutorManagement = () => {
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         required
                       >
+                        {fieldErrors.sessionTiming && <p className="text-red-500 text-xs mt-1">{fieldErrors.sessionTiming}</p>}
                         <option value="">Select timing</option>
                         <option value="after_fajr">After Fajr</option>
                         <option value="after_zohar">After Zohar</option>
@@ -1150,6 +1161,14 @@ const TutorManagement = () => {
                 </div>
 
                 <div className="flex justify-end space-x-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    disabled={isSubmitting}
+                  >
+                    Reset
+                  </button>
                   <button
                     type="button"
                     onClick={handleFormClose}
@@ -1198,6 +1217,7 @@ const TutorManagement = () => {
                       onChange={e => setFormData(prev => ({ ...prev, aadharPhoto: e.target.files[0] }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
+                    {formData.aadharPhoto && <p className="text-xs text-gray-600 mt-1">Selected: {formData.aadharPhoto.name}</p>}
                   </div>
 
                   {/* Bank Account Details */}
@@ -1232,6 +1252,7 @@ const TutorManagement = () => {
                       onChange={e => setFormData(prev => ({ ...prev, passbookPhoto: e.target.files[0] }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
+                    {formData.passbookPhoto && <p className="text-xs text-gray-600 mt-1">Selected: {formData.passbookPhoto.name}</p>}
                   </div>
                 </div>
 
@@ -1242,32 +1263,43 @@ const TutorManagement = () => {
                     <input
                       type="file"
                       name="certificates"
-                      accept=".pdf"
+                      accept=".jpg,.jpeg,.png,.pdf"
                       multiple
                       onChange={e => setFormData(prev => ({ ...prev, certificates: e.target.files }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
+                    {formData.certificates && formData.certificates.length > 0 && (
+                      <div className="text-xs text-gray-600 mt-1">
+                        Selected: {[...formData.certificates].map(f => f.name).join(', ')}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Memos (PDF, multiple allowed)</label>
                     <input
                       type="file"
                       name="memos"
-                      accept=".pdf"
+                      accept=".jpg,.jpeg,.png,.pdf"
                       multiple
                       onChange={e => setFormData(prev => ({ ...prev, memos: e.target.files }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
+                    {formData.memos && formData.memos.length > 0 && (
+                      <div className="text-xs text-gray-600 mt-1">
+                        Selected: {[...formData.memos].map(f => f.name).join(', ')}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Resume (PDF)</label>
                     <input
                       type="file"
                       name="resume"
-                      accept=".pdf"
+                      accept=".jpg,.jpeg,.png,.pdf"
                       onChange={e => setFormData(prev => ({ ...prev, resume: e.target.files[0] }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
+                    {formData.resume && <p className="text-xs text-gray-600 mt-1">Selected: {formData.resume.name}</p>}
                   </div>
                 </div>
 
