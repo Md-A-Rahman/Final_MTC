@@ -40,7 +40,15 @@ const TutorManagement = () => {
     subjects: [],
     sessionType: '',
     sessionTiming: '',
-    assignedHadiyaAmount: '' // Or 0
+    assignedHadiyaAmount: '',
+    aadharNumber: '',
+    aadharPhoto: null,
+    bankAccountNumber: '',
+    ifscCode: '',
+    passbookPhoto: null,
+    certificates: [],
+    memos: [],
+    resume: null
   })
 
   const subjects = [
@@ -67,7 +75,15 @@ const TutorManagement = () => {
       subjects: tutor.subjects || [],
       sessionType: tutor.sessionType,
       sessionTiming: tutor.sessionTiming,
-      assignedHadiyaAmount: tutor.assignedHadiyaAmount || '' // Or || 0
+      assignedHadiyaAmount: tutor.assignedHadiyaAmount || '', // Or || 0
+      aadharNumber: tutor.documents?.aadharNumber || '',
+      aadharPhoto: tutor.documents?.aadharPhoto || null,
+      bankAccountNumber: tutor.documents?.bankAccount?.accountNumber || '',
+      ifscCode: tutor.documents?.bankAccount?.ifscCode || '',
+      passbookPhoto: tutor.documents?.passbookPhoto || null,
+      certificates: tutor.documents?.certificates || [],
+      memos: tutor.documents?.memos || [],
+      resume: tutor.documents?.resume || null
     });
     setShowForm(true);
   };
@@ -93,7 +109,15 @@ const TutorManagement = () => {
       subjects: [],
       sessionType: '',
       sessionTiming: '',
-      assignedHadiyaAmount: '' // Or 0
+      assignedHadiyaAmount: '',
+      aadharNumber: '',
+      aadharPhoto: null,
+      bankAccountNumber: '',
+      ifscCode: '',
+      passbookPhoto: null,
+      certificates: [],
+      memos: [],
+      resume: null
     });
   };
 
@@ -104,6 +128,7 @@ const TutorManagement = () => {
     resetForm();
   };
 
+<<<<<<< HEAD
   const validateFields = () => {
     const errors = {};
     if (!formData.name.trim()) errors.name = 'Name is required.';
@@ -117,6 +142,15 @@ const TutorManagement = () => {
     if (!formData.sessionType) errors.sessionType = 'Select session type.';
     if (!formData.sessionTiming) errors.sessionTiming = 'Select session timing.';
     return errors;
+=======
+  const handleFileChange = (e) => {
+    const { name, files } = e.target;
+    if (name === 'certificates' || name === 'memos') {
+      setFormData(prev => ({ ...prev, [name]: Array.from(files) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: files[0] }));
+    }
+>>>>>>> 9085f8deb4217554e61cd8e0e3f767aa7fed09f6
   };
 
   const handleSubmit = async (e) => {
@@ -125,15 +159,22 @@ const TutorManagement = () => {
     setShowErrorAlert(false);
     setIsSubmitting(true);
 
+<<<<<<< HEAD
     const errors = validateFields();
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       setError('Please fix the errors below.');
+=======
+    // Validate required fields (certificates and memos now optional)
+    if (!formData.name || !formData.email || !formData.phone || !formData.assignedCenter || !formData.subjects?.length || !formData.sessionType || !formData.sessionTiming || !formData.aadharNumber || !formData.aadharPhoto || !formData.bankAccountNumber || !formData.ifscCode || !formData.passbookPhoto || !formData.resume) {
+      setError('Please fill in all required fields, including all mandatory documents.');
+>>>>>>> 9085f8deb4217554e61cd8e0e3f767aa7fed09f6
       setShowErrorAlert(true);
       setIsSubmitting(false);
       return;
     }
 
+<<<<<<< HEAD
     // Get the selected center
     const selectedCenter = centers?.find(c => c._id === formData.assignedCenter);
     if (!selectedCenter) {
@@ -228,6 +269,50 @@ const TutorManagement = () => {
         body: formPayload
       });
 
+=======
+    try {
+      const userDataString = localStorage.getItem('userData');
+      const token = userDataString ? JSON.parse(userDataString).token : null;
+      if (!token) {
+        setError('Please login to continue');
+        setShowErrorAlert(true);
+        setIsSubmitting(false);
+        setTimeout(() => { window.location.href = '/admin'; }, 2000);
+        return;
+      }
+
+      const form = new FormData();
+      form.append('name', formData.name);
+      form.append('email', formData.email);
+      form.append('phone', formData.phone);
+      form.append('password', formData.password);
+      form.append('assignmentInfo', formData.assignmentInfo);
+      form.append('assignedCenter', formData.assignedCenter);
+      formData.subjects.forEach(subj => form.append('subjects', subj));
+      form.append('sessionType', formData.sessionType);
+      form.append('sessionTiming', formData.sessionTiming);
+      form.append('assignedHadiyaAmount', formData.assignedHadiyaAmount);
+      form.append('documents[aadharNumber]', formData.aadharNumber);
+      form.append('aadharPhoto', formData.aadharPhoto);
+      form.append('documents[bankAccount][accountNumber]', formData.bankAccountNumber);
+      form.append('documents[bankAccount][ifscCode]', formData.ifscCode);
+      form.append('passbookPhoto', formData.passbookPhoto);
+      formData.certificates.forEach(file => form.append('certificates', file));
+      formData.memos.forEach(file => form.append('memos', file));
+      form.append('resume', formData.resume);
+
+      const url = editingTutor 
+        ? `http://localhost:5000/api/tutors/${editingTutor._id}`
+        : 'http://localhost:5000/api/tutors';
+
+      const response = await fetch(url, {
+        method: editingTutor ? 'PUT' : 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: form
+      });
+>>>>>>> 9085f8deb4217554e61cd8e0e3f767aa7fed09f6
       const data = await response.json();
 
       if (!response.ok) {
@@ -565,6 +650,20 @@ const TutorManagement = () => {
                   <p className="text-sm text-yellow-800">Resume pending</p>
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="text-lg font-semibold text-gray-900 mb-2">Documents</h4>
+            <div className="space-y-2 text-sm">
+              <div><span className="font-medium">Aadhar Number:</span> {tutor.documents?.aadharNumber || <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Aadhar Photo:</span> {tutor.documents?.aadharPhoto ? (<a href={`/${tutor.documents.aadharPhoto}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View</a>) : <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Bank Account Number:</span> {tutor.documents?.bankAccount?.accountNumber || <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">IFSC Code:</span> {tutor.documents?.bankAccount?.ifscCode || <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Passbook Photo:</span> {tutor.documents?.bankAccount?.passbookPhoto ? (<a href={`/${tutor.documents.bankAccount.passbookPhoto}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View</a>) : <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Certificates:</span> {Array.isArray(tutor.documents?.certificates) && tutor.documents.certificates.length > 0 ? tutor.documents.certificates.map((file, idx) => (<a key={idx} href={`/${file}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">View {idx + 1}</a>)) : <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Memos:</span> {Array.isArray(tutor.documents?.memos) && tutor.documents.memos.length > 0 ? tutor.documents.memos.map((file, idx) => (<a key={idx} href={`/${file}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">View {idx + 1}</a>)) : <span className="text-gray-400">Not Provided</span>}</div>
+              <div><span className="font-medium">Resume:</span> {tutor.documents?.resume ? (<a href={`/${tutor.documents.resume}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View</a>) : <span className="text-gray-400">Not Provided</span>}</div>
             </div>
           </div>
         </div>
@@ -1157,6 +1256,41 @@ const TutorManagement = () => {
                         <option value="after_isha">After Isha</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number <span className="text-red-500">*</span></label>
+                    <input type="text" name="aadharNumber" value={formData.aadharNumber} onChange={e => setFormData(prev => ({ ...prev, aadharNumber: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Photo <span className="text-red-500">*</span></label>
+                    <input type="file" name="aadharPhoto" accept="image/*" onChange={handleFileChange} className="w-full" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account Number <span className="text-red-500">*</span></label>
+                    <input type="text" name="bankAccountNumber" value={formData.bankAccountNumber} onChange={e => setFormData(prev => ({ ...prev, bankAccountNumber: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">IFSC Code <span className="text-red-500">*</span></label>
+                    <input type="text" name="ifscCode" value={formData.ifscCode} onChange={e => setFormData(prev => ({ ...prev, ifscCode: e.target.value }))} className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Passbook Photo <span className="text-red-500">*</span></label>
+                    <input type="file" name="passbookPhoto" accept="image/*" onChange={handleFileChange} className="w-full" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificates <span className="text-red-500">*</span> (multiple allowed)</label>
+                    <input type="file" name="certificates" accept="image/*,application/pdf" multiple onChange={handleFileChange} className="w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Memos <span className="text-red-500">*</span> (multiple allowed)</label>
+                    <input type="file" name="memos" accept="image/*,application/pdf" multiple onChange={handleFileChange} className="w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Resume <span className="text-red-500">*</span></label>
+                    <input type="file" name="resume" accept="application/pdf,.doc,.docx" onChange={handleFileChange} className="w-full" required />
                   </div>
                 </div>
 

@@ -276,7 +276,7 @@ const Reports = () => {
                   Absent Days
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Attendance %
+                  Total Days
                 </th>
               </tr>
             </thead>
@@ -284,7 +284,6 @@ const Reports = () => {
               {tutors.map((tutor) => {
                 const presentDays = Object.values(tutor.attendance).filter(Boolean).length
                 const totalDays = Object.values(tutor.attendance).length
-                const attendancePercentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
 
                 return (
                   <tr key={tutor.tutor._id} className="hover:bg-gray-50">
@@ -303,13 +302,7 @@ const Reports = () => {
                       <div className="text-sm text-gray-900">{totalDays - presentDays}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`text-sm font-medium ${
-                        attendancePercentage >= 90 ? 'text-green-600' :
-                        attendancePercentage >= 75 ? 'text-yellow-600' :
-                        'text-red-600'
-                      }`}>
-                        {attendancePercentage.toFixed(1)}%
-                      </div>
+                      <div className="text-sm text-gray-900">{totalDays}</div>
                     </td>
                   </tr>
                 )

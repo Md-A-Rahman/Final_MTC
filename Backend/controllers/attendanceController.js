@@ -180,4 +180,18 @@ export const getAttendanceReport = async (req, res) => {
     console.error('Error fetching attendance report:', error);
     res.status(500).json({ message: 'Error fetching attendance report', errorDetails: error.message });
   }
+};
+
+// Get recent attendance records
+export const getRecentAttendance = async (req, res) => {
+  try {
+    const recent = await Attendance.find()
+      .sort({ date: -1 })
+      .limit(10)
+      .populate('tutor', 'name email')
+      .populate('center', 'name');
+    res.json(recent);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching recent attendance', error: error.message });
+  }
 }; 

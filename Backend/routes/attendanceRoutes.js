@@ -16,4 +16,7 @@ router.get('/recent', getRecentAttendance);
 // Get attendance report
 router.get('/report', adminOnly, getAttendanceReport);
 
+// Get recent attendance
+router.get('/recent', getRecentAttendance);
+
 export default router; 
