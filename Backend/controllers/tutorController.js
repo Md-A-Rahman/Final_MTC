@@ -1,7 +1,12 @@
 import Tutor from '../models/Tutor.js';
 import Center from '../models/Center.js';
+import Attendance from '../models/Attendance.js';
 import bcrypt from 'bcryptjs';
 import { isWithinRadius, calculateDistance } from '../utils/geoUtils.js';
+
+// Helper: get file path or null
+const getFilePath = (files, field) => files[field] && files[field][0] ? files[field][0].path.replace(/\\/g, '/') : null;
+const getFilePaths = (files, field) => files[field] ? files[field].map(f => f.path.replace(/\\/g, '/')) : null;
 
 // @desc    Get all tutors
 // @route   GET /api/tutors
@@ -11,7 +16,6 @@ export const getTutors = async (req, res) => {
     const tutors = await Tutor.find()
       .populate('assignedCenter', 'name location')
       .select('-password');
-    // Add centerName to each tutor
     const tutorsWithCenterName = tutors.map(tutor => {
       const tutorObj = tutor.toObject();
       tutorObj.centerName = tutorObj.assignedCenter?.name || "Unknown Center";
@@ -31,16 +35,10 @@ export const getTutor = async (req, res) => {
     const tutor = await Tutor.findById(req.params.id)
       .populate('assignedCenter', 'name location')
       .select('-password');
-    
-    if (!tutor) {
-      return res.status(404).json({ message: 'Tutor not found' });
-    }
-
-    // Check if the requesting user is the tutor or an admin
+    if (!tutor) return res.status(404).json({ message: 'Tutor not found' });
     if (req.role !== 'admin' && req.user._id.toString() !== tutor._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to view this tutor' });
     }
-    // Add centerName to the tutor object
     const tutorObj = tutor.toObject();
     tutorObj.centerName = tutorObj.assignedCenter?.name || "Unknown Center";
     res.json(tutorObj);
@@ -55,58 +53,48 @@ export const getTutor = async (req, res) => {
 export const createTutor = async (req, res) => {
   try {
     const {
-      name,
-      email,
-      phone,
-      password,
-      qualifications,
-      assignedCenter,
-      subjects,
-      sessionType,
-      sessionTiming,
-      documents,
-      assignedHadiyaAmount // Added
+      name, email, phone, password, qualifications, assignedCenter, subjects,
+      sessionType, sessionTiming, assignedHadiyaAmount, aadharNumber,
+      bankAccountNumber, ifscCode
     } = req.body;
-
+    const files = req.files || {};
     // Check if tutor exists
     const tutorExists = await Tutor.findOne({ phone });
-    if (tutorExists) {
-      return res.status(400).json({ message: 'Tutor already exists' });
+    if (tutorExists) return res.status(400).json({ message: 'Tutor already exists' });
+    // Hash password
+    if (!password || password.length < 5) {
+      return res.status(400).json({ message: 'Password must be at least 5 characters long' });
     }
-
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
     // Create tutor
     const tutor = await Tutor.create({
       name,
       email,
       phone,
-      password,
+      password: hashedPassword,
       qualifications: qualifications || '',
       assignedCenter,
       subjects,
       sessionType,
       sessionTiming,
       documents: {
-        aadharNumber: documents?.aadharNumber || '',
-        aadharPhoto: documents?.aadharPhoto || null,
+        aadharNumber: aadharNumber || '',
+        aadharPhoto: getFilePath(files, 'aadharPhoto'),
         bankAccount: {
-          accountNumber: documents?.bankAccount?.accountNumber || '',
-          ifscCode: documents?.bankAccount?.ifscCode || '',
-          passbookPhoto: documents?.bankAccount?.passbookPhoto || null
+          accountNumber: bankAccountNumber || '',
+          ifscCode: ifscCode || '',
+          passbookPhoto: getFilePath(files, 'passbookPhoto')
         },
-        certificates: documents?.certificates || null,
-        memos: documents?.memos || null,
-        resume: documents?.resume || null
+        certificates: getFilePaths(files, 'certificates'),
+        memos: getFilePaths(files, 'memos'),
+        resume: getFilePath(files, 'resume')
       },
-      location: {
-        type: 'Point',
-        coordinates: [0, 0] // Default coordinates
-      },
-      assignedHadiyaAmount: assignedHadiyaAmount || 0 // Added, with a default if not provided
+      location: { type: 'Point', coordinates: [0, 0] },
+      assignedHadiyaAmount: assignedHadiyaAmount || 0
     });
-
     // Add tutor to center's tutors array
     await Center.findByIdAndUpdate(tutor.assignedCenter, { $addToSet: { tutors: tutor._id } });
-
     res.status(201).json({
       _id: tutor._id,
       name: tutor.name,
@@ -117,10 +105,7 @@ export const createTutor = async (req, res) => {
     });
   } catch (error) {
     console.error('Create tutor error:', error);
-    res.status(500).json({ 
-      message: 'Error creating tutor',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error creating tutor', error: error.message });
   }
 };
 
@@ -130,54 +115,18 @@ export const createTutor = async (req, res) => {
 export const updateTutor = async (req, res) => {
   try {
     const tutor = await Tutor.findById(req.params.id);
-    
     if (!tutor) {
-      return res.status(404).json({ message: 'Tutor not found' });
+      res.status(404).json({ message: 'Tutor not found' });
+      return;
     }
 
-    // Only handle password if it's provided in the request
-    if (req.body.password) {
-      try {
-        // Validate password length
-        if (req.body.password.length < 6) {
-          return res.status(400).json({ message: 'Password must be at least 6 characters long' });
-        }
+    // Handle uploaded files
+    const files = req.files || {};
+    const getFilePath = (field) => files[field] && files[field][0] ? files[field][0].path.replace(/\\/g, '/') : null;
+    const getFilePaths = (field) => files[field] ? files[field].map(f => f.path.replace(/\\/g, '/')) : null;
 
-        // Hash the password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(req.body.password, salt);
-        updateData.password = hashedPassword;
-      } catch (error) {
-        console.error('Error handling password:', error);
-        return res.status(400).json({ message: 'Failed to update password' });
-      }
-    } else {
-      // If no password is provided, don't include it in the update
-      delete updateData.password;
-    }
-
-    // If center is being changed
-    if (req.body.assignedCenter && req.body.assignedCenter !== tutor.assignedCenter.toString()) {
-      // Remove tutor from old center
-      const oldCenter = await Center.findById(tutor.assignedCenter);
-      if (oldCenter) {
-        oldCenter.tutors = oldCenter.tutors.filter(id => id.toString() !== tutor._id.toString());
-        await oldCenter.save();
-      }
-
-      // Add tutor to new center
-      const newCenter = await Center.findById(req.body.assignedCenter);
-      if (!newCenter) {
-        return res.status(404).json({ message: 'New center not found' });
-      }
-      newCenter.tutors.push(tutor._id);
-      await newCenter.save();
-    }
-
-    // Prepare update data - only include fields that are being updated
+    // Prepare update data
     const updateData = {};
-    
-    // Only update fields that are provided in the request
     if (req.body.name) updateData.name = req.body.name;
     if (req.body.email) updateData.email = req.body.email;
     if (req.body.phone) updateData.phone = req.body.phone;
@@ -186,6 +135,48 @@ export const updateTutor = async (req, res) => {
     if (req.body.sessionType) updateData.sessionType = req.body.sessionType;
     if (req.body.sessionTiming) updateData.sessionTiming = req.body.sessionTiming;
     if (req.body.assignmentInformation) updateData.assignmentInformation = req.body.assignmentInformation;
+    if (req.body.assignedHadiyaAmount) updateData.assignedHadiyaAmount = req.body.assignedHadiyaAmount;
+
+    // Update documents
+    updateData.documents = tutor.documents || {};
+    if (req.body.aadharNumber) updateData.documents.aadharNumber = req.body.aadharNumber;
+    if (getFilePath('aadharPhoto')) updateData.documents.aadharPhoto = getFilePath('aadharPhoto');
+    if (!updateData.documents.bankAccount) updateData.documents.bankAccount = {};
+    if (req.body.bankAccountNumber) updateData.documents.bankAccount.accountNumber = req.body.bankAccountNumber;
+    if (req.body.ifscCode) updateData.documents.bankAccount.ifscCode = req.body.ifscCode;
+    if (getFilePath('passbookPhoto')) updateData.documents.bankAccount.passbookPhoto = getFilePath('passbookPhoto');
+    if (getFilePaths('certificates')) updateData.documents.certificates = getFilePaths('certificates');
+    if (getFilePaths('memos')) updateData.documents.memos = getFilePaths('memos');
+    if (getFilePath('resume')) updateData.documents.resume = getFilePath('resume');
+
+    // Password update logic
+    if (req.body.password) {
+      if (req.body.password.length < 6) {
+        res.status(400).json({ message: 'Password must be at least 6 characters long' });
+        return;
+      }
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(req.body.password, salt);
+      updateData.password = hashedPassword;
+    }
+
+    // Center change logic
+    if (req.body.assignedCenter && req.body.assignedCenter !== tutor.assignedCenter.toString()) {
+      // Remove tutor from old center
+      const oldCenter = await Center.findById(tutor.assignedCenter);
+      if (oldCenter) {
+        oldCenter.tutors = oldCenter.tutors.filter(id => id.toString() !== tutor._id.toString());
+        await oldCenter.save();
+      }
+      // Add tutor to new center
+      const newCenter = await Center.findById(req.body.assignedCenter);
+      if (!newCenter) {
+        res.status(404).json({ message: 'New center not found' });
+        return;
+      }
+      newCenter.tutors.push(tutor._id);
+      await newCenter.save();
+    }
 
     // Check if all required information is complete
     const isInformationComplete = Boolean(
@@ -194,7 +185,6 @@ export const updateTutor = async (req, res) => {
       req.body.phone &&
       req.body.assignedCenter &&
       req.body.subjects &&
-      req.body.subjects.length > 0 &&
       req.body.sessionType &&
       req.body.sessionTiming
     );
@@ -206,35 +196,18 @@ export const updateTutor = async (req, res) => {
       updateData.status = 'pending';
     }
 
+    // Update the tutor document
+    const updatedTutor = await Tutor.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: false, context: 'query' }
+    )
+      .select('-password')
+      .populate('assignedCenter', 'name location');
 
-    try {
-      // Update the tutor document
-      const updatedTutor = await Tutor.findByIdAndUpdate(
-        req.params.id,
-        updateData,
-        { new: true, runValidators: false, context: 'query' }
-      )
-        .select('-password')
-        .populate('assignedCenter', 'name location');
-
-      // Log the status update for debugging
-      console.log(`Tutor status updated to: ${updatedTutor.status}`);
-
-      // Add centerName to the response
-      const tutorResponse = updatedTutor.toObject();
-      tutorResponse.centerName = tutorResponse.assignedCenter?.name || "Unknown Center";
-
-      if (!updatedTutor) {
-        return res.status(404).json({ message: 'Tutor not found' });
-      }
-
-      res.json(tutorResponse);
-    } catch (error) {
-      if (error.code === 11000) {
-        return res.status(400).json({ message: 'A tutor with this phone number already exists' });
-      }
-      console.error('Error updating tutor:', error);
-      res.status(500).json({ message: 'Failed to update tutor', error: error.message });
+    if (!updatedTutor) {
+      res.status(404).json({ message: 'Tutor not found' });
+      return;
     }
 
     // Add centerName to the response
@@ -244,7 +217,8 @@ export const updateTutor = async (req, res) => {
     res.json(tutorResponse);
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'A tutor with this phone number already exists' });
+      res.status(400).json({ message: 'A tutor with this phone number already exists' });
+      return;
     }
     res.status(500).json({ message: error.message });
   }
@@ -269,8 +243,6 @@ export const deleteTutor = async (req, res) => {
     }
 
     await tutor.deleteOne();
-    // Remove tutor from center's tutors array
-    await Center.findByIdAndUpdate(tutor.assignedCenter, { $pull: { tutors: tutor._id } });
     res.json({ message: 'Tutor removed' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -292,7 +264,7 @@ export const getTutorAttendanceReport = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to view this report' });
     }
 
-    const { month, year } = req.query; // Expecting month (1-12) and year (YYYY)
+    const { month, year } = req.query;
 
     let filteredAttendance = tutor.attendance;
 
@@ -304,7 +276,6 @@ export const getTutorAttendanceReport = async (req, res) => {
         return res.status(400).json({ message: 'Invalid month or year format.' });
       }
 
-      // Filter by year and month (getMonth() is 0-indexed)
       filteredAttendance = tutor.attendance.filter(record => {
         const recordDate = new Date(record.date);
         return recordDate.getFullYear() === numericYear && recordDate.getMonth() === (numericMonth - 1);
@@ -312,18 +283,8 @@ export const getTutorAttendanceReport = async (req, res) => {
     }
 
     const attendedSessions = filteredAttendance.filter(record => record.status === 'present').length;
-    
-    // Placeholder for totalSessions calculation. 
-    // For now, totalSessions will be the number of unique days within the filtered period where attendance was marked.
-    // This means percentage will be 100% if only 'present' is marked.
-    const uniqueMarkedDays = new Set(filteredAttendance.map(record => new Date(record.date).setHours(0,0,0,0))).size;
-    const totalSessionsForCalc = uniqueMarkedDays; // This needs to be replaced with actual expected workdays
-
+    const totalSessionsForCalc = filteredAttendance.length;
     const attendancePercentage = totalSessionsForCalc > 0 ? (attendedSessions / totalSessionsForCalc) * 100 : 0;
-
-    // TODO: Refine totalSessions based on business logic (e.g., expected workdays).
-    // TODO: Implement absentSessions calculation if 'absent' records are to be created or inferred.
-    // TODO: Structure monthlyBreakdown if needed (e.g., array of daily statuses).
 
     res.json({
       tutorId: tutor._id,
@@ -333,15 +294,12 @@ export const getTutorAttendanceReport = async (req, res) => {
         year: year ? parseInt(year, 10) : undefined,
       },
       attendanceStats: {
-        totalExpectedSessions: totalSessionsForCalc, // Placeholder - update with actual logic
+        totalExpectedSessions: totalSessionsForCalc,
         attendedSessions: attendedSessions,
-        absentSessions: totalSessionsForCalc - attendedSessions, // Placeholder - update with actual logic
+        absentSessions: totalSessionsForCalc - attendedSessions,
         attendancePercentage: parseFloat(attendancePercentage.toFixed(2)),
-        // monthlyBreakdown: [] // Example: [{ date: '2023-01-01', status: 'present' }, ...]
-      },
-      // rawFilteredData: filteredAttendance // Optional: for frontend to do more complex grouping/display
+      }
     });
-
   } catch (error) {
     console.error('Error fetching tutor attendance report:', error);
     res.status(500).json({ message: 'Error fetching attendance report', errorDetails: error.message });
@@ -359,12 +317,10 @@ export const getTutorPerformanceReport = async (req, res) => {
       return res.status(404).json({ message: 'Tutor not found' });
     }
 
-    // Check if the requesting user is the tutor or an admin
     if (req.role !== 'admin' && req.user._id.toString() !== tutor._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to view this report' });
     }
 
-    // TODO: Implement actual performance report logic
     res.json({
       tutorId: tutor._id,
       name: tutor.name,
@@ -391,12 +347,10 @@ export const getTutorStudentsReport = async (req, res) => {
       return res.status(404).json({ message: 'Tutor not found' });
     }
 
-    // Check if the requesting user is the tutor or an admin
     if (req.role !== 'admin' && req.user._id.toString() !== tutor._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to view this report' });
     }
 
-    // TODO: Implement actual students report logic
     res.json({
       tutorId: tutor._id,
       name: tutor.name,
@@ -408,12 +362,14 @@ export const getTutorStudentsReport = async (req, res) => {
         byClass: []
       }
     });
-    // console.log(tutor.name, tutor.location)
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// @desc    Submit attendance
+// @route   POST /api/tutors/attendance
+// @access  Private/Tutor
 export const submitAttendance = async (req, res) => {
   try {
     const tutor = await Tutor.findById(req.user._id);
@@ -433,13 +389,12 @@ export const submitAttendance = async (req, res) => {
     const [tutorLat, tutorLon] = req.body.currentLocation;
     const [centerLat, centerLon] = center.coordinates;
 
-    // Check if tutor is within 1300 meters of the center
     const isWithinRange = isWithinRadius(
       tutorLat,
       tutorLon,
       centerLat,
       centerLon,
-      1300 // 1300 meters radius
+      1300
     );
 
     if (!isWithinRange) {
@@ -452,7 +407,6 @@ export const submitAttendance = async (req, res) => {
       });
     }
 
-    // Record attendance
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -467,7 +421,22 @@ export const submitAttendance = async (req, res) => {
       centerName: center.name
     };
 
-    // Add to attendance array if it doesn't exist for today
+    try {
+      await Attendance.create({
+        tutor: tutor._id,
+        center: center._id,
+        date: today,
+        status: 'present',
+        markedBy: tutor._id,
+        location: {
+          type: 'Point',
+          coordinates: [tutorLon, tutorLat]
+        }
+      });
+    } catch (err) {
+      console.error('Error creating Attendance document:', err);
+    }
+
     const existingAttendanceIndex = tutor.attendance.findIndex(
       record => record.date.getTime() === today.getTime()
     );

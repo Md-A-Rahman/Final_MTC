@@ -35,27 +35,41 @@ export const markAttendance = async (req, res) => {
       // location: null, // Location not typically provided by admin marking
     };
 
-    const existingAttendanceIndex = tutor.attendance.findIndex(
-      record => new Date(record.date).getTime() === recordDate.getTime()
-    );
-
-    if (existingAttendanceIndex > -1) {
-      // Update existing record
-      tutor.attendance[existingAttendanceIndex] = {
-        ...tutor.attendance[existingAttendanceIndex], // Preserve existing fields like location if any
-        ...attendanceRecord // Overwrite with new data
-      };
-    } else {
-      // Add new record
-      tutor.attendance.push(attendanceRecord);
+    // --- NEW: Create Attendance document and use its createdAt for embedded array ---
+    console.log('Creating Attendance document with:', {
+      tutor: tutor._id,
+      center: center._id,
+      date: recordDate,
+      status: status,
+      markedBy: adminId
+    });
+    let attendanceDoc;
+    try {
+      attendanceDoc = await Attendance.create({
+        tutor: tutor._id,
+        center: center._id,
+        date: recordDate,
+        status: status,
+        markedBy: adminId // (this will be the tutor's ID if tutors mark their own attendance)
+      });
+      console.log('Attendance document created:', attendanceDoc);
+    } catch (err) {
+      console.error('Error creating Attendance document:', err);
     }
 
+    // Always push a new record to the embedded array
+    tutor.attendance.push({
+      date: recordDate,
+      status: status,
+      center: center._id,
+      centerName: center.name,
+      markedBy: adminId,
+      createdAt: attendanceDoc.createdAt
+    });
     await tutor.save();
 
-    // Find the newly added/updated record to return it (optional, but good for confirmation)
-    const savedRecord = tutor.attendance.find(
-        record => new Date(record.date).getTime() === recordDate.getTime()
-    );
+    // Return the newly added record (the last one in the array)
+    const savedRecord = tutor.attendance[tutor.attendance.length - 1];
 
     res.status(200).json({
       message: 'Attendance marked successfully',
@@ -69,6 +83,41 @@ export const markAttendance = async (req, res) => {
 };
 
 // Get attendance report for a specific month
+// Get recent attendance records (latest 20)
+export const getRecentAttendance = async (req, res) => {
+  try {
+    if (req.role === 'admin') {
+      // Admin: return latest 20 attendance records for all tutors
+      const recent = await Attendance.find({})
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .populate('tutor', 'name')
+        .populate('center', 'name');
+      return res.json(recent);
+    } else if (req.role === 'tutor') {
+      // Tutor: return only today's attendance for this tutor
+      const tutorId = req.user._id;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      const recent = await Attendance.find({
+        tutor: tutorId,
+        date: { $gte: today, $lt: tomorrow }
+      })
+        .sort({ createdAt: -1 })
+        .limit(1)
+        .populate('tutor', 'name')
+        .populate('center', 'name');
+      return res.json(recent);
+    } else {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch recent attendance', error: err.message });
+  }
+};
+
 export const getAttendanceReport = async (req, res) => {
   try {
     const { month, year, centerId } = req.query;

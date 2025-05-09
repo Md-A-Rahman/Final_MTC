@@ -86,7 +86,7 @@ const TutorManagement = () => {
       name: '',
       email: '',
       phone: '',
-      password: 'tutor@123',
+      password: '',
       assignmentInfo: '',
       assignedCenter: '',
       subjects: [],
@@ -136,33 +136,39 @@ const TutorManagement = () => {
         return;
       }
 
-      // Format the data according to backend validation rules
-      const formattedData = {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        assignedCenter: selectedCenter._id,
-        subjects: formData.subjects,
-        sessionType: formData.sessionType,
-        sessionTiming: formData.sessionTiming,
-        assignmentInformation: formData.assignmentInfo || '',
-        assignedHadiyaAmount: formData.assignedHadiyaAmount ? parseFloat(formData.assignedHadiyaAmount) : 0
-      };
-
-      // Only include password if it's being changed
+      // --- Build FormData for multipart/form-data ---
+      const formPayload = new FormData();
+      formPayload.append('name', formData.name.trim());
+      formPayload.append('email', formData.email.trim());
+      formPayload.append('phone', formData.phone.trim());
+      formPayload.append('assignedCenter', selectedCenter._id);
+      formPayload.append('sessionType', formData.sessionType);
+      formPayload.append('sessionTiming', formData.sessionTiming);
+      formPayload.append('assignmentInformation', formData.assignmentInfo || '');
+      formPayload.append('assignedHadiyaAmount', formData.assignedHadiyaAmount ? parseFloat(formData.assignedHadiyaAmount) : 0);
       if (formData.password && formData.password !== 'tutor@123') {
-        // Validate password length
-        if (formData.password.length < 6) {
-          setError('Password must be at least 6 characters long');
-          setShowErrorAlert(true);
-          setIsSubmitting(false);
-          return;
-        }
-        formattedData.password = formData.password;
-      } else {
-        // If password is not being changed, don't include it in the request
-        delete formattedData.password;
+        formPayload.append('password', formData.password);
       }
+      // Subjects as array
+      if (Array.isArray(formData.subjects)) {
+        formData.subjects.forEach((s, i) => formPayload.append(`subjects[${i}]`, s));
+      }
+      // Documents
+      if (formData.aadharNumber) formPayload.append('aadharNumber', formData.aadharNumber);
+      if (formData.aadharPhoto) formPayload.append('aadharPhoto', formData.aadharPhoto);
+      if (formData.bankAccountNumber) formPayload.append('bankAccountNumber', formData.bankAccountNumber);
+      if (formData.ifscCode) formPayload.append('ifscCode', formData.ifscCode);
+      if (formData.passbookPhoto) formPayload.append('passbookPhoto', formData.passbookPhoto);
+      // Certificates (multiple)
+      if (formData.certificates && formData.certificates.length > 0) {
+        Array.from(formData.certificates).forEach((file, i) => formPayload.append('certificates', file));
+      }
+      // Memos (multiple)
+      if (formData.memos && formData.memos.length > 0) {
+        Array.from(formData.memos).forEach((file, i) => formPayload.append('memos', file));
+      }
+      // Resume (single)
+      if (formData.resume) formPayload.append('resume', formData.resume);
 
       // Check if all required information is complete
       const isInformationComplete = Boolean(
@@ -206,12 +212,12 @@ const TutorManagement = () => {
         const response = await fetch(url, {
           method: editingTutor ? 'PUT' : 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
+            // 'Content-Type': 'multipart/form-data', // DO NOT SET THIS! Let browser set it
             'Accept': 'application/json'
           },
           credentials: 'include',
-          body: JSON.stringify(formattedData)
+          body: formPayload
         });
 
         const data = await response.json();
@@ -938,7 +944,7 @@ const TutorManagement = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1168,6 +1174,117 @@ const TutorManagement = () => {
                     ) : (
                       editingTutor ? 'Update Tutor' : 'Add Tutor'
                     )}
+                  </button>
+                </div>
+                {/* --- DOCUMENTS SECTION --- */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number</label>
+                    <input
+                      type="text"
+                      name="aadharNumber"
+                      value={formData.aadharNumber || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, aadharNumber: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="Enter Aadhar Number"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Photo (JPG/PNG/PDF)</label>
+                    <input
+                      type="file"
+                      name="aadharPhoto"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={e => setFormData(prev => ({ ...prev, aadharPhoto: e.target.files[0] }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Bank Account Details */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account Number</label>
+                    <input
+                      type="text"
+                      name="bankAccountNumber"
+                      value={formData.bankAccountNumber || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, bankAccountNumber: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="Enter Account Number"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank IFSC Code</label>
+                    <input
+                      type="text"
+                      name="ifscCode"
+                      value={formData.ifscCode || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, ifscCode: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="Enter IFSC Code"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank Passbook Photo (JPG/PNG/PDF)</label>
+                    <input
+                      type="file"
+                      name="passbookPhoto"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={e => setFormData(prev => ({ ...prev, passbookPhoto: e.target.files[0] }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* Certificates, Memos, Resume */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificates (PDF, multiple allowed)</label>
+                    <input
+                      type="file"
+                      name="certificates"
+                      accept=".pdf"
+                      multiple
+                      onChange={e => setFormData(prev => ({ ...prev, certificates: e.target.files }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Memos (PDF, multiple allowed)</label>
+                    <input
+                      type="file"
+                      name="memos"
+                      accept=".pdf"
+                      multiple
+                      onChange={e => setFormData(prev => ({ ...prev, memos: e.target.files }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Resume (PDF)</label>
+                    <input
+                      type="file"
+                      name="resume"
+                      accept=".pdf"
+                      onChange={e => setFormData(prev => ({ ...prev, resume: e.target.files[0] }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-4 mt-8">
+                  <button
+                    type="button"
+                    onClick={handleFormClose}
+                    className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                    disabled={isSubmitting}
+                  >
+                    {editingTutor ? 'Update Tutor' : 'Add Tutor'}
                   </button>
                 </div>
               </form>

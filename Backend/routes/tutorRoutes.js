@@ -1,4 +1,5 @@
 import express from 'express';
+import upload from '../multer.js';
 import { body } from 'express-validator';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { protect, adminOnly } from '../middleware/auth.js';
@@ -16,6 +17,15 @@ import {
 } from '../controllers/tutorController.js';
 
 const router = express.Router();
+
+// Multer fields config for tutor docs
+const tutorUploadFields = [
+  { name: 'aadharPhoto', maxCount: 1 },
+  { name: 'passbookPhoto', maxCount: 1 },
+  { name: 'certificates', maxCount: 10 },
+  { name: 'memos', maxCount: 10 },
+  { name: 'resume', maxCount: 1 }
+];
 
 // Tutor validation rules
 const tutorValidation = [
@@ -72,11 +82,11 @@ router.use(protect);
 // Routes that require admin access
 router.route('/')
   .get(getTutors)
-  .post(adminOnly, tutorValidation, validateRequest, createTutor);
+  .post(adminOnly, upload.fields(tutorUploadFields), tutorValidation, validateRequest, createTutor);
 
 router.route('/:id')
   .get(getTutor)
-  .put(adminOnly, tutorValidation, validateRequest, updateTutor)
+  .put(adminOnly, upload.fields(tutorUploadFields), updateValidation, validateRequest, updateTutor)
   .delete(adminOnly, deleteTutor);
 
 // Report routes
